@@ -1,5 +1,9 @@
+use monitor::cyclic_monitor::CyclicMonitor;
 use url::Url;
 
+use std::sync::mpsc::channel;
+
+mod monitor;
 mod notification_sender;
 
 const BASE_URL_STRING: &'static str = "https://gotify.van-ngo.com";
@@ -23,6 +27,30 @@ async fn main() {
         }
         Ok(()) => {
             println!("All good");
+        }
+    }
+
+    let (sender, receiver) = channel::<monitor::MonitorNotification>();
+
+    let cyclic_monitor = CyclicMonitor;
+    cyclic_monitor.start(sender.clone());
+
+    while let Ok(msg) = receiver.recv() {
+        match notification_sender::send_notification(
+            &base_url,
+            msg.app_token,
+            &msg.title,
+            &msg.message,
+            10,
+        )
+        .await
+        {
+            Err(e) => {
+                println!("{}", e);
+            }
+            Ok(()) => {
+                println!("Sent: {:?}", &msg);
+            }
         }
     }
 }
