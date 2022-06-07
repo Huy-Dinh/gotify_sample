@@ -1,6 +1,5 @@
 use super::MonitorNotification;
 use std::sync::mpsc::Sender;
-use std::thread;
 use std::time::{Duration, SystemTime};
 
 pub struct CyclicMonitor;
@@ -9,7 +8,7 @@ const APP_TOKEN: &'static str = "A7opbHJXd4qnc7Z";
 
 impl CyclicMonitor {
     pub fn start(&self, sender: Sender<MonitorNotification>) {
-        thread::spawn(move || {
+        tokio::spawn(async move {
             loop {
                 let notification = MonitorNotification {
                     app_token: APP_TOKEN,
@@ -23,8 +22,8 @@ impl CyclicMonitor {
                     }
                     Ok(_) => {}
                 }
-    
-                thread::sleep(Duration::from_secs(30));
+
+                tokio::time::sleep(Duration::from_secs(30)).await;
             }
         });
     }
