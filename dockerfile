@@ -44,4 +44,6 @@ COPY --from=builder /gotify_sample/target/x86_64-unknown-linux-musl/release/goti
 # Use an unprivileged user.
 USER gotify_sample:gotify_sample
 
+ENV RUST_LOG=info
+
 CMD ["/gotify_sample/gotify_sample"]

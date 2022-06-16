@@ -8,7 +8,7 @@ const APP_TOKEN: &'static str = "A7opbHJXd4qnc7Z";
 
 impl CyclicMonitor {
     pub fn start(&self, sender: Sender<MonitorNotification>) {
-        tokio::spawn(async move {
+        let running_fn = async move {
             loop {
                 let notification = MonitorNotification {
                     app_token: APP_TOKEN,
@@ -25,6 +25,8 @@ impl CyclicMonitor {
 
                 tokio::time::sleep(Duration::from_secs(30)).await;
             }
-        });
+        };
+
+        tokio::spawn(running_fn);
     }
 }

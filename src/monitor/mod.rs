@@ -6,3 +6,4 @@ pub struct MonitorNotification {
 }
 
 pub mod cyclic_monitor;
+pub mod top_news_monitor;

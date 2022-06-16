@@ -1,5 +1,6 @@
-use monitor::cyclic_monitor::CyclicMonitor;
+use monitor::top_news_monitor::TopNewsMonitor;
 use url::Url;
+use log::{info, error};
 
 use std::sync::mpsc::channel;
 
@@ -11,29 +12,15 @@ const BASE_URL_STRING: &'static str = "https://gotify.van-ngo.com";
 // tokio let's us use "async" on our main function
 #[tokio::main]
 async fn main() {
-    let base_url = Url::parse(BASE_URL_STRING).expect("Failed to parse the base url");
+    env_logger::init();
 
-    match notification_sender::send_notification(
-        &base_url,
-        "A7opbHJXd4qnc7Z",
-        "Hello",
-        "From the otter slide",
-        10,
-    )
-    .await
-    {
-        Err(e) => {
-            println!("{}", e);
-        }
-        Ok(()) => {
-            println!("All good");
-        }
-    }
+    let base_url = Url::parse(BASE_URL_STRING).expect("Failed to parse the base url");
 
     let (sender, receiver) = channel::<monitor::MonitorNotification>();
 
-    let cyclic_monitor = CyclicMonitor;
-    cyclic_monitor.start(sender.clone());
+    TopNewsMonitor::new(None).start(sender.clone(), "us", "bitcoin", 3600);
+    TopNewsMonitor::new(None).start(sender.clone(), "us", "recession", 7200);
+    TopNewsMonitor::new(None).start(sender.clone(), "de", "", 7200);
 
     while let Ok(msg) = receiver.recv() {
         match notification_sender::send_notification(
@@ -46,10 +33,10 @@ async fn main() {
         .await
         {
             Err(e) => {
-                println!("{}", e);
+                error!("{}", e);
             }
             Ok(()) => {
-                println!("Sent: {:?}", &msg);
+                info!("Sent: {:?}", &msg);
             }
         }
     }
