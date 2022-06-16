@@ -18,9 +18,15 @@ async fn main() {
 
     let (sender, receiver) = channel::<monitor::MonitorNotification>();
 
-    TopNewsMonitor::new(None).start(sender.clone(), "us", "bitcoin", 3600);
-    TopNewsMonitor::new(None).start(sender.clone(), "us", "recession", 7200);
-    TopNewsMonitor::new(None).start(sender.clone(), "de", "", 7200);
+    let mut top_news_monitors = vec![
+        TopNewsMonitor::new(None, "us", Some("bitcoin"), 3600),
+        TopNewsMonitor::new(None, "us", Some("recession"), 7200),
+        TopNewsMonitor::new(None, "de", None, 7200)
+    ];
+
+    for monitor in &mut top_news_monitors {
+        monitor.start(sender.clone());
+    }
 
     while let Ok(msg) = receiver.recv() {
         match notification_sender::send_notification(
