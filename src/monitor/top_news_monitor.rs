@@ -1,6 +1,6 @@
 use super::MonitorNotification;
 use chrono::prelude::*;
-use log::{error, warn};
+use log::{error, warn, debug};
 use std::{
     error::Error,
     fmt::{self, Display},
@@ -47,7 +47,7 @@ async fn get_top_news(
     api_key: &str,
     country: &str,
     topic: &Option<String>,
-) -> Result<Option<(String, String)>, Box<dyn Error>> {
+) -> Result<Option<(String, String, Option<String>)>, Box<dyn Error>> {
     let mut request_builder = reqwest::Client::new()
         .get("https://newsapi.org/v2/top-headlines")
         .query(&[("country", country), ("apiKey", api_key)])
@@ -82,12 +82,17 @@ async fn get_top_news(
         Some(title_str) => title_str,
     };
 
+    let image_url = match first_article["urlToImage"].as_str() {
+        None => None,
+        Some(image_url) => Some(image_url.to_string()),
+    };
+
     let source = match first_article["source"].as_object() {
         None => "No Source",
         Some(object) => object["name"].as_str().unwrap_or("No Source"),
     };
 
-    Ok(Some((title.to_string(), source.to_string())))
+    Ok(Some((title.to_string(), source.to_string(), image_url)))
 }
 
 impl TopNewsMonitor {
@@ -152,11 +157,12 @@ impl TopNewsMonitor {
                     Ok(result) => result,
                 };
             
-                if let Some((news_title, news_author)) = top_news_result {
+                if let Some((news_title, news_author, image_url)) = top_news_result {
                     let notification = MonitorNotification {
                         app_token: APP_TOKEN,
                         title: news_author,
                         message: news_title,
+                        image_url: image_url
                     };
             
                     if let Err(e) = sender.send(notification) {
@@ -177,9 +183,13 @@ impl TopNewsMonitor {
         self.optional_task_handle = Some(tokio::spawn(running_fn));
     }
 
-    pub fn stop(&self) {
+}
+
+impl Drop for TopNewsMonitor {
+    fn drop(&mut self) {
         if let Some(task_handle) = &self.optional_task_handle {
             task_handle.abort();
+            debug!("Aborted running task on drop");
         }
     }
 }

@@ -13,7 +13,8 @@ impl CyclicMonitor {
                 let notification = MonitorNotification {
                     app_token: APP_TOKEN,
                     title: "Time report my man".to_string(),
-                    message: format!("{:?}", SystemTime::now())
+                    message: format!("{:?}", SystemTime::now()),
+                    image_url: None
                 };
     
                 match sender.send(notification) {

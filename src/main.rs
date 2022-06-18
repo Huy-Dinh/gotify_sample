@@ -34,6 +34,7 @@ async fn main() {
             msg.app_token,
             &msg.title,
             &msg.message,
+            &msg.image_url,
             10,
         )
         .await

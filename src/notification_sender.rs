@@ -1,18 +1,22 @@
+use core::fmt;
 use reqwest::StatusCode;
 use serde_json::{self, json};
-use core::fmt;
 use std::error::Error;
 use url::Url;
 
 #[derive(Debug, Clone)]
 struct RequestFailed {
     url: String,
-    message: String
+    message: String,
 }
 
 impl fmt::Display for RequestFailed {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Request failed. Url: {}, message: {}", self.url, self.message)
+        write!(
+            f,
+            "Request failed. Url: {}, message: {}",
+            self.url, self.message
+        )
     }
 }
 
@@ -23,14 +27,19 @@ pub async fn send_notification(
     app_token: &str,
     title: &str,
     message: &str,
+    image_url: &Option<String>,
     priority: u32,
 ) -> Result<(), Box<dyn Error>> {
-
-    let notification_json = json!({
+    let mut notification_json = json!({
             "message": message,
             "title": title,
             "priority": priority
     });
+
+    if let Some(image_url) = image_url {
+        notification_json["extras"] =
+            json!({ "client::notification": json!({ "bigImageUrl": image_url }) })
+    }
 
     let value = base_url.join("message")?;
     let url = value.as_str();
@@ -45,13 +54,14 @@ pub async fn send_notification(
     match response.status() {
         StatusCode::OK => {
             return Ok(());
-        },
+        }
         _ => {
             let response_text = response.text().await?;
             return Err(RequestFailed {
                 message: response_text,
-                url: url.to_string()
-            }.into());
+                url: url.to_string(),
+            }
+            .into());
         }
     }
 }
