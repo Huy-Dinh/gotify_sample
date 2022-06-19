@@ -1,8 +1,8 @@
-use monitor::top_news_monitor::TopNewsMonitor;
+use log::{error, info};
+use monitor::top_news_monitor::{news_api_fetcher::NewsApiFetcher, TopNewsMonitor, soha_scrape_fetcher::SohaScrapeFetcher};
 use url::Url;
-use log::{info, error};
 
-use std::sync::mpsc::channel;
+use std::sync::{mpsc::channel, Arc};
 
 mod monitor;
 mod notification_sender;
@@ -19,9 +19,20 @@ async fn main() {
     let (sender, receiver) = channel::<monitor::MonitorNotification>();
 
     let mut top_news_monitors = vec![
-        TopNewsMonitor::new(None, "us", Some("bitcoin"), 3600),
-        TopNewsMonitor::new(None, "us", Some("recession"), 7200),
-        TopNewsMonitor::new(None, "de", None, 7200)
+        TopNewsMonitor::new(
+            Arc::new(NewsApiFetcher::new(None, "us", Some("bitcoin".to_string()))),
+            3600,
+        ),
+        TopNewsMonitor::new(
+            Arc::new(NewsApiFetcher::new(
+                None,
+                "us",
+                Some("recession".to_string()),
+            )),
+            7200,
+        ),
+        TopNewsMonitor::new(Arc::new(NewsApiFetcher::new(None, "de", None)), 7200),
+        TopNewsMonitor::new(Arc::new(SohaScrapeFetcher{}), 3600)
     ];
 
     for monitor in &mut top_news_monitors {
@@ -35,6 +46,7 @@ async fn main() {
             &msg.title,
             &msg.message,
             &msg.image_url,
+            &msg.article_link,
             10,
         )
         .await

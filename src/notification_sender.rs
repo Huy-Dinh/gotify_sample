@@ -28,6 +28,7 @@ pub async fn send_notification(
     title: &str,
     message: &str,
     image_url: &Option<String>,
+    article_link: &Option<String>,
     priority: u32,
 ) -> Result<(), Box<dyn Error>> {
     let mut notification_json = json!({
@@ -36,9 +37,18 @@ pub async fn send_notification(
             "priority": priority
     });
 
+    let mut client_notification = json!({});
+
+    if let Some(article_link) = article_link {
+        client_notification["click"] = json!({ "url": article_link });
+    }
+
     if let Some(image_url) = image_url {
-        notification_json["extras"] =
-            json!({ "client::notification": json!({ "bigImageUrl": image_url }) })
+        client_notification["bigImageUrl"] = json!(image_url);
+    }
+
+    if client_notification.is_object() {
+        notification_json["extras"] = json!({ "client::notification": client_notification });
     }
 
     let value = base_url.join("message")?;
