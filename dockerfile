@@ -20,10 +20,20 @@ RUN adduser \
     --uid "${UID}" \
     "${USER}"
 
+RUN cargo new gotify_sample
 
 WORKDIR /gotify_sample
 
-COPY ./ .
+# copy over manifests
+COPY ./Cargo.lock ./Cargo.lock
+COPY ./Cargo.toml ./Cargo.toml
+
+# this build step will cache dependencies
+RUN cargo build --target x86_64-unknown-linux-musl --release
+RUN rm src/*.rs
+
+# copy source tree
+COPY ./src ./src
 
 RUN cargo build --target x86_64-unknown-linux-musl --release
 
