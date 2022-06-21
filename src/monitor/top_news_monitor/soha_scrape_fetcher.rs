@@ -1,15 +1,17 @@
-use std::{error::Error};
+use std::error::Error;
 
 use super::{NewsFetcher, ResponseParsingFailed};
 use async_trait::async_trait;
 
 pub struct SohaScrapeFetcher {
-    last_title: String
+    last_title: String,
 }
 
 impl SohaScrapeFetcher {
     pub fn new() -> SohaScrapeFetcher {
-        SohaScrapeFetcher { last_title: "".to_string() }
+        SohaScrapeFetcher {
+            last_title: "".to_string(),
+        }
     }
 }
 
@@ -50,19 +52,13 @@ impl NewsFetcher for SohaScrapeFetcher {
 
         self.last_title = title.clone();
 
-        let image_url: Option<String> = match image {
-            None => None,
-            Some(image) => Some(image.to_string()),
-        };
+        let image_url: Option<String> = image.map(|image_url| image_url.to_string());
 
-        let article_link = match article_link {
-            None => None,
-            Some(article_link) => Some({
-                let mut full_link = "https://soha.vn".to_string();
-                full_link.push_str(article_link);
-                full_link
-            })
-        };
+        let article_link = article_link.map(|article_link| {
+            let mut full_link = "https://soha.vn".to_string();
+            full_link.push_str(article_link);
+            full_link
+        });
 
         Ok(Some((title, "Soha".to_string(), image_url, article_link)))
     }

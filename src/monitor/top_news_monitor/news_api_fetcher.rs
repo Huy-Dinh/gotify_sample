@@ -72,24 +72,18 @@ impl NewsFetcher for NewsApiFetcher {
 
         let title = match first_article["title"].as_str() {
             None => return Err(ResponseParsingFailed.into()),
-            Some(title_str) => title_str,
+            Some(title_str) => title_str.to_string(),
         };
 
-        let image_url = match first_article["urlToImage"].as_str() {
-            None => None,
-            Some(image_url) => Some(image_url.to_string()),
-        };
+        let image_url = first_article["urlToImage"].as_str().map(|image_url| image_url.to_string());
 
         let source = match first_article["source"].as_object() {
             None => "No Source",
             Some(object) => object["name"].as_str().unwrap_or("No Source"),
         };
 
-        let article_link = match first_article["url"].as_str() {
-            None => None,
-            Some(url) => Some(url.to_string()),
-        };
+        let article_link = first_article["url"].as_str().map(|article_url| article_url.to_string());
 
-        Ok(Some((title.to_string(), source.to_string(), image_url, article_link)))
+        Ok(Some((title, source.to_string(), image_url, article_link)))
     }
 }
