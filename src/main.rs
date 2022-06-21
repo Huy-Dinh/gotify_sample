@@ -1,6 +1,10 @@
 use log::{error, info};
-use monitor::top_news_monitor::{news_api_fetcher::NewsApiFetcher, TopNewsMonitor, soha_scrape_fetcher::SohaScrapeFetcher};
+use monitor::top_news_monitor::{
+    news_api_fetcher::NewsApiFetcher, soha_scrape_fetcher::SohaScrapeFetcher, TopNewsMonitor,
+};
 use url::Url;
+
+use tokio::sync::Mutex;
 
 use std::sync::{mpsc::channel, Arc};
 
@@ -20,19 +24,26 @@ async fn main() {
 
     let mut top_news_monitors = vec![
         TopNewsMonitor::new(
-            Arc::new(NewsApiFetcher::new(None, "us", Some("bitcoin".to_string()))),
+            Arc::new(Mutex::new(NewsApiFetcher::new(
+                None,
+                "us",
+                Some("bitcoin".to_string()),
+            ))),
             3600,
         ),
         TopNewsMonitor::new(
-            Arc::new(NewsApiFetcher::new(
+            Arc::new(Mutex::new(NewsApiFetcher::new(
                 None,
                 "us",
                 Some("recession".to_string()),
-            )),
+            ))),
             7200,
         ),
-        TopNewsMonitor::new(Arc::new(NewsApiFetcher::new(None, "de", None)), 7200),
-        TopNewsMonitor::new(Arc::new(SohaScrapeFetcher{}), 3600)
+        TopNewsMonitor::new(
+            Arc::new(Mutex::new(NewsApiFetcher::new(None, "de", None))),
+            7200,
+        ),
+        TopNewsMonitor::new(Arc::new(Mutex::new(SohaScrapeFetcher::new())), 60),
     ];
 
     for monitor in &mut top_news_monitors {

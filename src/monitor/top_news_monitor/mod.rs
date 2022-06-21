@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use tokio::task::JoinHandle;
+use tokio::{task::JoinHandle, sync::Mutex};
 
 pub mod news_api_fetcher;
 pub mod soha_scrape_fetcher;
@@ -18,11 +18,11 @@ const APP_TOKEN: &'static str = "A7opbHJXd4qnc7Z";
 
 #[async_trait]
 pub trait NewsFetcher {
-    async fn fetch_news(&self) -> Result<Option<(String, String, Option<String>, Option<String>)>, Box<dyn Error>>;
+    async fn fetch_news(&mut self) -> Result<Option<(String, String, Option<String>, Option<String>)>, Box<dyn Error>>;
 }
 
 pub struct TopNewsMonitor {
-    fetcher: Arc<dyn NewsFetcher + Sync + Send>,
+    fetcher: Arc<Mutex<dyn NewsFetcher + Sync + Send>>,
     optional_task_handle: Option<JoinHandle<()>>,
     interval: u64,
 }
@@ -39,7 +39,7 @@ impl Display for ResponseParsingFailed {
 }
 
 impl TopNewsMonitor {
-    pub fn new(fetcher: Arc<dyn NewsFetcher + Sync + Send>, interval: u64) -> TopNewsMonitor {
+    pub fn new(fetcher: Arc<Mutex<dyn NewsFetcher + Sync + Send>>, interval: u64) -> TopNewsMonitor {
         TopNewsMonitor {
             fetcher: fetcher,
             optional_task_handle: None,
@@ -71,7 +71,7 @@ impl TopNewsMonitor {
                     continue;
                 }
 
-                let top_news_result = match fetcher.fetch_news().await {
+                let top_news_result = match fetcher.lock().await.fetch_news().await {
                     Err(e) => {
                         error!("{}", e);
                         continue;

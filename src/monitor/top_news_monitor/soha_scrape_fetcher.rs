@@ -1,14 +1,22 @@
-use std::error::Error;
+use std::{error::Error};
 
 use super::{NewsFetcher, ResponseParsingFailed};
 use async_trait::async_trait;
 
-pub struct SohaScrapeFetcher;
+pub struct SohaScrapeFetcher {
+    last_title: String
+}
+
+impl SohaScrapeFetcher {
+    pub fn new() -> SohaScrapeFetcher {
+        SohaScrapeFetcher { last_title: "".to_string() }
+    }
+}
 
 #[async_trait]
 impl NewsFetcher for SohaScrapeFetcher {
     async fn fetch_news(
-        &self,
+        &mut self,
     ) -> Result<Option<(String, String, Option<String>, Option<String>)>, Box<dyn Error>> {
         let response = reqwest::get("https://soha.vn/quoc-te.htm")
             .await?
@@ -35,6 +43,12 @@ impl NewsFetcher for SohaScrapeFetcher {
             None => return Err(ResponseParsingFailed.into()),
             Some(title_value) => title_value,
         };
+
+        if title.eq(&self.last_title) {
+            return Ok(None);
+        }
+
+        self.last_title = title.clone();
 
         let image_url: Option<String> = match image {
             None => None,
