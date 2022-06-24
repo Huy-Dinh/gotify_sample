@@ -1,6 +1,6 @@
 use super::MonitorNotification;
 use async_trait::async_trait;
-use log::{debug, error, info};
+use log::{debug, error};
 use std::{
     error::Error,
     fmt::{self, Display},
@@ -24,7 +24,7 @@ pub trait NewsFetcher {
 
 pub struct TopNewsMonitor {
     fetcher: Arc<Mutex<dyn NewsFetcher + Sync + Send>>,
-    optional_task_handle: Option<JoinHandle<()>>,
+    task_handle: Option<JoinHandle<()>>,
     interval: u64,
 }
 
@@ -46,7 +46,7 @@ impl TopNewsMonitor {
     ) -> TopNewsMonitor {
         TopNewsMonitor {
             fetcher: fetcher,
-            optional_task_handle: None,
+            task_handle: None,
             interval: interval,
         }
     }
@@ -96,13 +96,13 @@ impl TopNewsMonitor {
         };
 
         // Save the task handle so we can stop it later
-        self.optional_task_handle = Some(tokio::spawn(running_fn));
+        self.task_handle = Some(tokio::spawn(running_fn));
     }
 }
 
 impl Drop for TopNewsMonitor {
     fn drop(&mut self) {
-        if let Some(task_handle) = &self.optional_task_handle {
+        if let Some(task_handle) = &self.task_handle {
             task_handle.abort();
             debug!("Aborted running task on drop");
         }
