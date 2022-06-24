@@ -1,7 +1,6 @@
 use super::MonitorNotification;
 use async_trait::async_trait;
-use chrono::prelude::*;
-use log::{debug, error, warn};
+use log::{debug, error, info};
 use std::{
     error::Error,
     fmt::{self, Display},
@@ -9,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use tokio::{task::JoinHandle, sync::Mutex};
+use tokio::{sync::Mutex, task::JoinHandle, time::Instant};
 
 pub mod news_api_fetcher;
 pub mod soha_scrape_fetcher;
@@ -18,7 +17,9 @@ const APP_TOKEN: &'static str = "A7opbHJXd4qnc7Z";
 
 #[async_trait]
 pub trait NewsFetcher {
-    async fn fetch_news(&mut self) -> Result<Option<(String, String, Option<String>, Option<String>)>, Box<dyn Error>>;
+    async fn fetch_news(
+        &mut self,
+    ) -> Result<Option<(String, String, Option<String>, Option<String>)>, Box<dyn Error>>;
 }
 
 pub struct TopNewsMonitor {
@@ -39,7 +40,10 @@ impl Display for ResponseParsingFailed {
 }
 
 impl TopNewsMonitor {
-    pub fn new(fetcher: Arc<Mutex<dyn NewsFetcher + Sync + Send>>, interval: u64) -> TopNewsMonitor {
+    pub fn new(
+        fetcher: Arc<Mutex<dyn NewsFetcher + Sync + Send>>,
+        interval: u64,
+    ) -> TopNewsMonitor {
         TopNewsMonitor {
             fetcher: fetcher,
             optional_task_handle: None,
@@ -52,24 +56,17 @@ impl TopNewsMonitor {
         let fetcher = self.fetcher.clone();
         let running_fn = async move {
             let mut first_interation = true;
+            let mut next_wake_instant = Instant::now();
 
             loop {
                 // We don't delay when running the first iteration
                 if first_interation {
                     first_interation = false;
                 } else {
-                    tokio::time::sleep(Duration::from_secs(interval)).await;
+                    tokio::time::sleep_until(next_wake_instant).await;
                 }
 
-                let current_time = Local::now();
-
-                if current_time.hour() < 8 || current_time.hour() > 21 {
-                    warn!(
-                        "Current time is {}, you're probably sleeping, not gonna wake you up",
-                        current_time
-                    );
-                    continue;
-                }
+                next_wake_instant = Instant::now() + Duration::from_secs(interval);
 
                 let top_news_result = match fetcher.lock().await.fetch_news().await {
                     Err(e) => {
@@ -85,7 +82,7 @@ impl TopNewsMonitor {
                         title: news_author,
                         message: news_title,
                         image_url: image_url,
-                        article_link: article_link
+                        article_link: article_link,
                     };
 
                     if let Err(e) = sender.send(notification) {
@@ -93,7 +90,7 @@ impl TopNewsMonitor {
                         continue;
                     }
                 } else {
-                    warn!("Empty News result");
+                    debug!("Empty News result");
                 }
             }
         };

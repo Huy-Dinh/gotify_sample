@@ -2,15 +2,24 @@ use std::error::Error;
 
 use super::{NewsFetcher, ResponseParsingFailed};
 use async_trait::async_trait;
+use scraper::Selector;
+
+const IMAGE_SELECTOR: &str = "div.shnews_box>div.hl-img>a>img";
+const TITLE_SELECTOR: &str = "div.shnews_box>div.shnews_total>h3>a";
+const SOHA_SOURCE_NAME: &str = "Soha";
 
 pub struct SohaScrapeFetcher {
     last_title: String,
+    image_selector: Selector,
+    title_selector: Selector
 }
 
 impl SohaScrapeFetcher {
     pub fn new() -> SohaScrapeFetcher {
         SohaScrapeFetcher {
             last_title: "".to_string(),
+            image_selector: scraper::Selector::parse(IMAGE_SELECTOR).unwrap(),
+            title_selector: scraper::Selector::parse(TITLE_SELECTOR).unwrap()
         }
     }
 }
@@ -27,17 +36,12 @@ impl NewsFetcher for SohaScrapeFetcher {
 
         let document = scraper::Html::parse_document(&response);
 
-        let image_selector = scraper::Selector::parse("div.shnews_box>div.hl-img>a>img").unwrap();
         let image = document
-            .select(&image_selector)
+            .select(&self.image_selector)
             .next()
             .and_then(|x| x.value().attr("src"));
 
-        let title_selector =
-            scraper::Selector::parse("div.shnews_box>div.shnews_total>h3>a").unwrap();
-
-        let title_element = document.select(&title_selector).next();
-
+        let title_element = document.select(&self.title_selector).next();
         let title = title_element.map(|x| x.inner_html().trim().to_string());
         let article_link = title_element.and_then(|x| x.value().attr("href"));
 
@@ -60,6 +64,6 @@ impl NewsFetcher for SohaScrapeFetcher {
             full_link
         });
 
-        Ok(Some((title, "Soha".to_string(), image_url, article_link)))
+        Ok(Some((title, SOHA_SOURCE_NAME.to_string(), image_url, article_link)))
     }
 }

@@ -13,7 +13,6 @@ mod notification_sender;
 
 const BASE_URL_STRING: &'static str = "https://gotify.van-ngo.com";
 
-// tokio let's us use "async" on our main function
 #[tokio::main]
 async fn main() {
     env_logger::init();
@@ -23,22 +22,6 @@ async fn main() {
     let (sender, receiver) = channel::<monitor::MonitorNotification>();
 
     let mut top_news_monitors = vec![
-        TopNewsMonitor::new(
-            Arc::new(Mutex::new(NewsApiFetcher::new(
-                None,
-                "us",
-                Some("bitcoin".to_string()),
-            ))),
-            3600,
-        ),
-        TopNewsMonitor::new(
-            Arc::new(Mutex::new(NewsApiFetcher::new(
-                None,
-                "us",
-                Some("recession".to_string()),
-            ))),
-            7200,
-        ),
         TopNewsMonitor::new(
             Arc::new(Mutex::new(NewsApiFetcher::new(None, "de", None))),
             7200,
