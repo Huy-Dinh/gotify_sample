@@ -26,7 +26,8 @@ async fn main() {
             Arc::new(Mutex::new(NewsApiFetcher::new(None, "de", None))),
             7200,
         ),
-        TopNewsMonitor::new(Arc::new(Mutex::new(SohaScrapeFetcher::new())), 60),
+        TopNewsMonitor::new(Arc::new(Mutex::new(SohaScrapeFetcher::new("quoc-te.htm"))), 60),
+        TopNewsMonitor::new(Arc::new(Mutex::new(SohaScrapeFetcher::new("cong-nghe.htm"))), 60),
     ];
 
     for monitor in &mut top_news_monitors {
