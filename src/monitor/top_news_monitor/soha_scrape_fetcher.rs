@@ -1,7 +1,8 @@
 use std::error::Error;
 
-use super::{NewsFetcher, ResponseParsingFailed};
+use super::{NewsFetcher, ResponseParsingFailed, NewsInfo};
 use async_trait::async_trait;
+use log::info;
 use scraper::Selector;
 
 const IMAGE_SELECTOR: &str = "div.shnews_box>div.hl-img>a>img";
@@ -35,11 +36,13 @@ impl SohaScrapeFetcher {
 impl NewsFetcher for SohaScrapeFetcher {
     async fn fetch_news(
         &mut self,
-    ) -> Result<Option<(String, String, Option<String>, Option<String>)>, Box<dyn Error>> {
-        let response = reqwest::get(&self.url_to_scrape)
-            .await?
-            .text()
-            .await?;
+    ) -> Result<Option<NewsInfo>, Box<dyn Error>> {
+        info!("Fetching {}", &self.url_to_scrape);
+
+        let response = reqwest::get(&self.url_to_scrape).await?;
+        info!("Done fetching {}", &self.url_to_scrape);
+
+        let response = response.text().await?;
 
         let document = scraper::Html::parse_document(&response);
 
@@ -50,7 +53,7 @@ impl NewsFetcher for SohaScrapeFetcher {
 
         let title_element = document.select(&self.title_selector).next();
         let title = title_element.map(|x| x.inner_html().trim().to_string());
-        let article_link = title_element.and_then(|x| x.value().attr("href"));
+        let article_url = title_element.and_then(|x| x.value().attr("href"));
 
         let title = match title {
             None => return Err(ResponseParsingFailed.into()),
@@ -65,12 +68,19 @@ impl NewsFetcher for SohaScrapeFetcher {
 
         let image_url: Option<String> = image.map(|image_url| image_url.to_string());
 
-        let article_link = article_link.map(|article_link| {
+        let article_url = article_url.map(|article_url| {
             let mut full_link = SOHA_URL.to_string();
-            full_link.push_str(article_link);
+            full_link.push_str(article_url);
             full_link
         });
 
-        Ok(Some((title, SOHA_SOURCE_NAME.to_string(), image_url, article_link)))
+        let news_info = NewsInfo {
+            title: title,
+            source: SOHA_SOURCE_NAME.to_string(),
+            image_url: image_url,
+            article_url: article_url
+        };
+
+        Ok(Some(news_info))
     }
 }

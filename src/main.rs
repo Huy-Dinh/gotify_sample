@@ -1,4 +1,4 @@
-use log::{error, info};
+use log::{error, debug};
 use monitor::top_news_monitor::{
     news_api_fetcher::NewsApiFetcher, soha_scrape_fetcher::SohaScrapeFetcher, TopNewsMonitor,
 };
@@ -23,11 +23,21 @@ async fn main() {
 
     let mut top_news_monitors = vec![
         TopNewsMonitor::new(
-            Arc::new(Mutex::new(NewsApiFetcher::new(None, "de", None))),
-            7200,
+            Arc::new(Mutex::new(NewsApiFetcher::new(
+                None,
+                "us",
+                None,
+            ))),
+            3600,
         ),
-        TopNewsMonitor::new(Arc::new(Mutex::new(SohaScrapeFetcher::new("quoc-te.htm"))), 60),
-        TopNewsMonitor::new(Arc::new(Mutex::new(SohaScrapeFetcher::new("cong-nghe.htm"))), 60),
+        TopNewsMonitor::new(
+            Arc::new(Mutex::new(SohaScrapeFetcher::new("quoc-te.htm"))),
+            3600,
+        ),
+        TopNewsMonitor::new(
+            Arc::new(Mutex::new(SohaScrapeFetcher::new("cong-nghe.htm"))),
+            3600,
+        ),
     ];
 
     for monitor in &mut top_news_monitors {
@@ -50,7 +60,7 @@ async fn main() {
                 error!("{}", e);
             }
             Ok(()) => {
-                info!("Sent: {:?}", &msg);
+                debug!("Sent: {:?}", &msg);
             }
         }
     }

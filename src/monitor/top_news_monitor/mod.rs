@@ -15,11 +15,18 @@ pub mod soha_scrape_fetcher;
 
 const APP_TOKEN: &'static str = "A7opbHJXd4qnc7Z";
 
+pub struct NewsInfo {
+    title: String,
+    source: String,
+    image_url: Option<String>,
+    article_url: Option<String>
+}
+
 #[async_trait]
 pub trait NewsFetcher {
     async fn fetch_news(
         &mut self,
-    ) -> Result<Option<(String, String, Option<String>, Option<String>)>, Box<dyn Error>>;
+    ) -> Result<Option<NewsInfo>, Box<dyn Error>>;
 }
 
 pub struct TopNewsMonitor {
@@ -55,17 +62,10 @@ impl TopNewsMonitor {
         let interval = self.interval;
         let fetcher = self.fetcher.clone();
         let running_fn = async move {
-            let mut first_interation = true;
             let mut next_wake_instant = Instant::now();
 
             loop {
-                // We don't delay when running the first iteration
-                if first_interation {
-                    first_interation = false;
-                } else {
-                    tokio::time::sleep_until(next_wake_instant).await;
-                }
-
+                tokio::time::sleep_until(next_wake_instant).await;
                 next_wake_instant = Instant::now() + Duration::from_secs(interval);
 
                 let top_news_result = match fetcher.lock().await.fetch_news().await {
@@ -76,13 +76,13 @@ impl TopNewsMonitor {
                     Ok(result) => result,
                 };
 
-                if let Some((news_title, news_author, image_url, article_link)) = top_news_result {
+                if let Some(news_info) = top_news_result {
                     let notification = MonitorNotification {
                         app_token: APP_TOKEN,
-                        title: news_author,
-                        message: news_title,
-                        image_url: image_url,
-                        article_link: article_link,
+                        title: news_info.source,
+                        message: news_info.title,
+                        image_url: news_info.image_url,
+                        article_link: news_info.article_url,
                     };
 
                     if let Err(e) = sender.send(notification) {

@@ -2,7 +2,7 @@ use std::{error::Error, fmt, fmt::Display};
 
 use async_trait::async_trait;
 
-use super::{NewsFetcher, ResponseParsingFailed};
+use super::{NewsFetcher, NewsInfo, ResponseParsingFailed};
 
 const DEFAULT_API_KEY: &'static str = "db957bc6a67148abbb9a6e35402123e3";
 
@@ -40,7 +40,7 @@ impl NewsApiFetcher {
 
 #[async_trait]
 impl NewsFetcher for NewsApiFetcher {
-    async fn fetch_news(&mut self) -> Result<Option<(String, String, Option<String>, Option<String>)>, Box<dyn Error>> {
+    async fn fetch_news(&mut self) -> Result<Option<NewsInfo>, Box<dyn Error>> {
         let mut request_builder = reqwest::Client::new()
             .get("https://newsapi.org/v2/top-headlines")
             .query(&[("country", &self.country), ("apiKey", &self.api_key)])
@@ -75,15 +75,24 @@ impl NewsFetcher for NewsApiFetcher {
             Some(title_str) => title_str.to_string(),
         };
 
-        let image_url = first_article["urlToImage"].as_str().map(|image_url| image_url.to_string());
+        let image_url = first_article["urlToImage"]
+            .as_str()
+            .map(|image_url| image_url.to_string());
 
         let source = match first_article["source"].as_object() {
             None => "No Source",
             Some(object) => object["name"].as_str().unwrap_or("No Source"),
         };
 
-        let article_link = first_article["url"].as_str().map(|article_url| article_url.to_string());
+        let article_url = first_article["url"]
+            .as_str()
+            .map(|article_url| article_url.to_string());
 
-        Ok(Some((title, source.to_string(), image_url, article_link)))
+        Ok(Some(NewsInfo {
+            title: title,
+            source: source.to_string(),
+            image_url: image_url,
+            article_url: article_url,
+        }))
     }
 }
