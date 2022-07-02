@@ -1,14 +1,20 @@
-####################################################################################################
-## Builder
-####################################################################################################
-FROM rust:latest AS builder
+FROM lukemathwalker/cargo-chef:latest-rust-1.56.0 AS chef
+WORKDIR /gotify_sample
 
-RUN rustup target add x86_64-unknown-linux-musl
-RUN apt update && apt install -y musl-tools musl-dev
-RUN update-ca-certificates
+###########
+## Planner
+###########
+FROM chef as planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+###########
+## Builder
+###########
+FROM chef AS builder
 
 # Create appuser
-ENV USER=gotify_sample
+ENV USER=myuser
 ENV UID=10001
 
 RUN adduser \
@@ -20,40 +26,31 @@ RUN adduser \
     --uid "${UID}" \
     "${USER}"
 
-RUN cargo new gotify_sample
+RUN rustup target add x86_64-unknown-linux-musl
+RUN apt update && apt install -y musl-tools musl-dev
+RUN update-ca-certificates
 
-WORKDIR /gotify_sample
+# Copy recipe and build dependencies
+COPY --from=planner /gotify_sample/recipe.json recipe.json
+RUN cargo chef cook --release  --target x86_64-unknown-linux-musl --recipe-path recipe.json
 
-# copy over manifests
-COPY ./Cargo.lock ./Cargo.lock
-COPY ./Cargo.toml ./Cargo.toml
-
-# this build step will cache dependencies
-RUN cargo build --target x86_64-unknown-linux-musl --release
-RUN rm src/*.rs
-
-# copy source tree
-COPY ./src ./src
-
+# Build the actual program
+COPY . .
 RUN cargo build --target x86_64-unknown-linux-musl --release
 
-####################################################################################################
+###############
 ## Final image
-####################################################################################################
+###############
 FROM scratch
 
-# Import from builder.
+# Import user from builder.
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
 WORKDIR /gotify_sample
-
 # Copy our build
 COPY --from=builder /gotify_sample/target/x86_64-unknown-linux-musl/release/gotify_sample ./
 
-# Use an unprivileged user.
-USER gotify_sample:gotify_sample
-
+USER myuser:myuser
 ENV RUST_LOG=info
-
 CMD ["/gotify_sample/gotify_sample"]
