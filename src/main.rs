@@ -1,6 +1,6 @@
 use log::{error, debug};
 use monitor::top_news_monitor::{
-    news_api_fetcher::NewsApiFetcher, soha_scrape_fetcher::SohaScrapeFetcher, TopNewsMonitor,
+    soha_scrape_fetcher::SohaScrapeFetcher, TopNewsMonitor, vnexpress_scrape_fetcher::VnExpressScrapeFetcher
 };
 use url::Url;
 
@@ -23,19 +23,15 @@ async fn main() {
 
     let mut top_news_monitors = vec![
         TopNewsMonitor::new(
-            Arc::new(Mutex::new(NewsApiFetcher::new(
-                None,
-                "us",
-                None,
-            ))),
-            3600,
-        ),
-        TopNewsMonitor::new(
             Arc::new(Mutex::new(SohaScrapeFetcher::new("quoc-te.htm"))),
             3600,
         ),
         TopNewsMonitor::new(
             Arc::new(Mutex::new(SohaScrapeFetcher::new("cong-nghe.htm"))),
+            3600,
+        ),
+        TopNewsMonitor::new(
+            Arc::new(Mutex::new(VnExpressScrapeFetcher::new())),
             3600,
         ),
     ];

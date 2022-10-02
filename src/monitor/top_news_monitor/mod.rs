@@ -12,6 +12,7 @@ use tokio::{sync::Mutex, task::JoinHandle, time::Instant};
 
 pub mod news_api_fetcher;
 pub mod soha_scrape_fetcher;
+pub mod vnexpress_scrape_fetcher;
 
 const APP_TOKEN: &'static str = "A7opbHJXd4qnc7Z";
 
