@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use super::{NewsFetcher, ResponseParsingFailed, NewsInfo};
+use super::{NewsFetcher, NewsInfo, ResponseParsingFailed};
 use async_trait::async_trait;
 use log::info;
 use scraper::Selector;
@@ -14,7 +14,8 @@ pub struct SohaScrapeFetcher {
     last_title: String,
     image_selector: Selector,
     title_selector: Selector,
-    url_to_scrape: String
+    url_to_scrape: String,
+    client: reqwest::Client,
 }
 
 impl SohaScrapeFetcher {
@@ -27,19 +28,18 @@ impl SohaScrapeFetcher {
             last_title: "".to_string(),
             image_selector: scraper::Selector::parse(IMAGE_SELECTOR).unwrap(),
             title_selector: scraper::Selector::parse(TITLE_SELECTOR).unwrap(),
-            url_to_scrape: url_to_scrape
+            url_to_scrape: url_to_scrape,
+            client: reqwest::Client::new(),
         }
     }
 }
 
 #[async_trait]
 impl NewsFetcher for SohaScrapeFetcher {
-    async fn fetch_news(
-        &mut self,
-    ) -> Result<Option<NewsInfo>, Box<dyn Error>> {
+    async fn fetch_news(&mut self) -> Result<Option<NewsInfo>, Box<dyn Error>> {
         info!("Fetching {}", &self.url_to_scrape);
 
-        let response = reqwest::get(&self.url_to_scrape).await?;
+        let response = self.client.get(&self.url_to_scrape).send().await?;
         info!("Done fetching {}", &self.url_to_scrape);
 
         let response = response.text().await?;
@@ -78,7 +78,7 @@ impl NewsFetcher for SohaScrapeFetcher {
             title: title,
             source: SOHA_SOURCE_NAME.to_string(),
             image_url: image_url,
-            article_url: article_url
+            article_url: article_url,
         };
 
         Ok(Some(news_info))
