@@ -8,25 +8,31 @@ use scraper::Selector;
 const IMAGE_SELECTOR: &str = "div.wrapper-topstory-folder>article>div.thumb-art>a>picture>img";
 const TITLE_SELECTOR: &str = "div.wrapper-topstory-folder>article>h3>a";
 const VNEXPRESS_SOURCE_NAME: &str = "VnExpress";
-const VNEXPRESS_URL: &str = "https://vnexpress.net/";
+const VNEXPRESS_URL: &str = "https://vnexpress.net";
 
 pub struct VnExpressScrapeFetcher {
     last_title: String,
     image_selector: Selector,
     title_selector: Selector,
     url_to_scrape: String,
+    source_name: String,
     client: reqwest::Client,
 }
 
 impl VnExpressScrapeFetcher {
-    pub fn new() -> VnExpressScrapeFetcher {
+    pub fn new(topic_name: &str, topic_path: Option<&str>) -> VnExpressScrapeFetcher {
         let mut url_to_scrape = VNEXPRESS_URL.to_string();
+        if let Some(topic_path) = topic_path {
+            url_to_scrape.push_str("/");
+            url_to_scrape.push_str(topic_path);
+        }
 
         VnExpressScrapeFetcher {
             last_title: "".to_string(),
             image_selector: scraper::Selector::parse(IMAGE_SELECTOR).unwrap(),
             title_selector: scraper::Selector::parse(TITLE_SELECTOR).unwrap(),
             url_to_scrape: url_to_scrape,
+            source_name: format!("{} {}", VNEXPRESS_SOURCE_NAME, topic_name),
             client: reqwest::Client::new(),
         }
     }
@@ -68,7 +74,7 @@ impl NewsFetcher for VnExpressScrapeFetcher {
 
         let news_info = NewsInfo {
             title: title,
-            source: VNEXPRESS_SOURCE_NAME.to_string(),
+            source: self.source_name.to_owned(),
             image_url: image_url,
             article_url: article_url.map(|url| url.to_string()),
         };

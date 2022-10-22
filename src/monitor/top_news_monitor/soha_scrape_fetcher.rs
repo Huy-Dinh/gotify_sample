@@ -15,20 +15,24 @@ pub struct SohaScrapeFetcher {
     image_selector: Selector,
     title_selector: Selector,
     url_to_scrape: String,
+    source_name: String,
     client: reqwest::Client,
 }
 
 impl SohaScrapeFetcher {
-    pub fn new(path_to_scrape: &str) -> SohaScrapeFetcher {
+    pub fn new(topic_name: &str, topic_path: Option<&str>) -> SohaScrapeFetcher {
         let mut url_to_scrape = SOHA_URL.to_string();
-        url_to_scrape.push_str("/");
-        url_to_scrape.push_str(path_to_scrape);
+        if let Some(topic_path) = topic_path {
+            url_to_scrape.push_str("/");
+            url_to_scrape.push_str(topic_path);
+        }
 
         SohaScrapeFetcher {
             last_title: "".to_string(),
             image_selector: scraper::Selector::parse(IMAGE_SELECTOR).unwrap(),
             title_selector: scraper::Selector::parse(TITLE_SELECTOR).unwrap(),
             url_to_scrape: url_to_scrape,
+            source_name: format!("{} {}", SOHA_SOURCE_NAME, topic_name),
             client: reqwest::Client::new(),
         }
     }
@@ -76,7 +80,7 @@ impl NewsFetcher for SohaScrapeFetcher {
 
         let news_info = NewsInfo {
             title: title,
-            source: SOHA_SOURCE_NAME.to_string(),
+            source: self.source_name.to_owned(),
             image_url: image_url,
             article_url: article_url,
         };

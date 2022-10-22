@@ -1,6 +1,7 @@
-use log::{error, debug};
+use log::{debug, error};
 use monitor::top_news_monitor::{
-    soha_scrape_fetcher::SohaScrapeFetcher, TopNewsMonitor, vnexpress_scrape_fetcher::VnExpressScrapeFetcher
+    soha_scrape_fetcher::SohaScrapeFetcher, vnexpress_scrape_fetcher::VnExpressScrapeFetcher,
+    TopNewsMonitor,
 };
 use url::Url;
 
@@ -21,19 +22,43 @@ async fn main() {
 
     let (sender, receiver) = channel::<monitor::MonitorNotification>();
 
+    let soha_general_monitor = TopNewsMonitor::new(
+        Arc::new(Mutex::new(SohaScrapeFetcher::new("chung", None))),
+        1800,
+    );
+
+    let soha_international_monitor = TopNewsMonitor::new(
+        Arc::new(Mutex::new(SohaScrapeFetcher::new(
+            "quốc tế",
+            Some("quoc-te.htm"),
+        ))),
+        1800,
+    );
+
+    let soha_technology_monitor = TopNewsMonitor::new(
+        Arc::new(Mutex::new(SohaScrapeFetcher::new(
+            "công nghệ",
+            Some("cong-nghe.htm"),
+        ))),
+        1800,
+    );
+
+    let vnexpress_general_monitor = TopNewsMonitor::new(
+        Arc::new(Mutex::new(VnExpressScrapeFetcher::new("chung", None))),
+        1800,
+    );
+
+    let vnexpress_international_monitor = TopNewsMonitor::new(
+        Arc::new(Mutex::new(VnExpressScrapeFetcher::new("quốc tế", Some("the-gioi")))),
+        3600,
+    );
+
     let mut top_news_monitors = vec![
-        TopNewsMonitor::new(
-            Arc::new(Mutex::new(SohaScrapeFetcher::new("quoc-te.htm"))),
-            3600,
-        ),
-        TopNewsMonitor::new(
-            Arc::new(Mutex::new(SohaScrapeFetcher::new("cong-nghe.htm"))),
-            3600,
-        ),
-        TopNewsMonitor::new(
-            Arc::new(Mutex::new(VnExpressScrapeFetcher::new())),
-            3600,
-        ),
+        soha_general_monitor,
+        soha_international_monitor,
+        soha_technology_monitor,
+        vnexpress_general_monitor,
+        vnexpress_international_monitor,
     ];
 
     for monitor in &mut top_news_monitors {
