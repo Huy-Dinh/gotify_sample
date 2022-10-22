@@ -4,7 +4,8 @@ use async_trait::async_trait;
 
 use super::{NewsFetcher, NewsInfo, ResponseParsingFailed};
 
-const DEFAULT_API_KEY: &'static str = "db957bc6a67148abbb9a6e35402123e3";
+#[allow(dead_code)]
+const DEFAULT_API_KEY: &str = "db957bc6a67148abbb9a6e35402123e3";
 
 pub struct NewsApiFetcher {
     api_key: String,
@@ -24,6 +25,7 @@ impl Display for NoArticleError {
 }
 
 impl NewsApiFetcher {
+    #[allow(dead_code)]
     pub fn new(api_key: Option<String>, country: &str, topic: Option<String>) -> NewsApiFetcher {
         let mut this_api_key = DEFAULT_API_KEY.to_string();
         if let Some(api_key) = api_key {
@@ -33,7 +35,7 @@ impl NewsApiFetcher {
         NewsApiFetcher {
             api_key: this_api_key,
             country: country.to_string(),
-            topic: topic,
+            topic,
         }
     }
 }
@@ -61,7 +63,7 @@ impl NewsFetcher for NewsApiFetcher {
             Some(articles_array) => articles_array,
         };
 
-        if articles.len() == 0 {
+        if articles.is_empty() {
             return Ok(None);
         }
 
@@ -89,10 +91,10 @@ impl NewsFetcher for NewsApiFetcher {
             .map(|article_url| article_url.to_string());
 
         Ok(Some(NewsInfo {
-            title: title,
+            title,
             source: source.to_string(),
-            image_url: image_url,
-            article_url: article_url,
+            image_url,
+            article_url,
         }))
     }
 }

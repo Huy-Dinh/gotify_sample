@@ -63,15 +63,14 @@ pub async fn send_notification(
 
     match response.status() {
         StatusCode::OK => {
-            return Ok(());
+            Ok(())
         }
         _ => {
             let response_text = response.text().await?;
-            return Err(RequestFailed {
+            Err(RequestFailed {
                 message: response_text,
                 url: url.to_string(),
-            }
-            .into());
+            }.into())
         }
     }
 }

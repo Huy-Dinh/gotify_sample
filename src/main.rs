@@ -1,6 +1,6 @@
 use log::{debug, error};
 use monitor::top_news_monitor::{
-    soha_scrape_fetcher::SohaScrapeFetcher, vnexpress_scrape_fetcher::VnExpressScrapeFetcher,
+    news_scraper_fetcher::{soha_parser, vnexpress_parser, NewsScraperFetcher},
     TopNewsMonitor,
 };
 use url::Url;
@@ -12,7 +12,7 @@ use std::sync::{mpsc::channel, Arc};
 mod monitor;
 mod notification_sender;
 
-const BASE_URL_STRING: &'static str = "https://gotify.van-ngo.com";
+const BASE_URL_STRING: &str = "https://gotify.van-ngo.com";
 
 #[tokio::main]
 async fn main() {
@@ -23,34 +23,48 @@ async fn main() {
     let (sender, receiver) = channel::<monitor::MonitorNotification>();
 
     let soha_general_monitor = TopNewsMonitor::new(
-        Arc::new(Mutex::new(SohaScrapeFetcher::new("chung", None))),
+        Arc::new(Mutex::new(NewsScraperFetcher::new(
+            "Soha",
+            "https://soha.vn/",
+            soha_parser::parse_soha,
+        ))),
         1800,
     );
 
     let soha_international_monitor = TopNewsMonitor::new(
-        Arc::new(Mutex::new(SohaScrapeFetcher::new(
-            "quốc tế",
-            Some("quoc-te.htm"),
+        Arc::new(Mutex::new(NewsScraperFetcher::new(
+            "Soha quốc tế",
+            "https://soha.vn/quoc-te.htm",
+            soha_parser::parse_soha,
         ))),
         1800,
     );
 
     let soha_technology_monitor = TopNewsMonitor::new(
-        Arc::new(Mutex::new(SohaScrapeFetcher::new(
-            "công nghệ",
-            Some("cong-nghe.htm"),
+        Arc::new(Mutex::new(NewsScraperFetcher::new(
+            "Soha công nghệ",
+            "https://soha.vn/cong-nghe.htm",
+            soha_parser::parse_soha,
         ))),
         1800,
     );
 
     let vnexpress_general_monitor = TopNewsMonitor::new(
-        Arc::new(Mutex::new(VnExpressScrapeFetcher::new("chung", None))),
+        Arc::new(Mutex::new(NewsScraperFetcher::new(
+            "VnExpress chung",
+            "https://vnexpress.net/",
+            vnexpress_parser::parse_vnexpress,
+        ))),
         1800,
     );
 
     let vnexpress_international_monitor = TopNewsMonitor::new(
-        Arc::new(Mutex::new(VnExpressScrapeFetcher::new("quốc tế", Some("the-gioi")))),
-        3600,
+        Arc::new(Mutex::new(NewsScraperFetcher::new(
+            "VnExpress quốc tế",
+            "https://vnexpress.net/the-gioi",
+            vnexpress_parser::parse_vnexpress,
+        ))),
+        1800,
     );
 
     let mut top_news_monitors = vec![
