@@ -1,10 +1,11 @@
-FROM lukemathwalker/cargo-chef:latest-rust-1.56.0 AS chef
+FROM lukemathwalker/cargo-chef:latest AS chef
 WORKDIR /gotify_sample
 
 ###########
 ## Planner
 ###########
 FROM chef as planner
+ENV RUSTFLAGS="--cfg tokio_unstable"
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
@@ -26,17 +27,20 @@ RUN adduser \
     --uid "${UID}" \
     "${USER}"
 
+
+ENV RUSTFLAGS="--cfg tokio_unstable"
+
 RUN rustup target add x86_64-unknown-linux-musl
 RUN apt update && apt install -y musl-tools musl-dev
 RUN update-ca-certificates
 
 # Copy recipe and build dependencies
 COPY --from=planner /gotify_sample/recipe.json recipe.json
-RUN cargo chef cook --release  --target x86_64-unknown-linux-musl --recipe-path recipe.json
+RUN cargo chef cook --target x86_64-unknown-linux-musl --recipe-path recipe.json
 
 # Build the actual program
 COPY . .
-RUN cargo build --target x86_64-unknown-linux-musl --release
+RUN cargo build --target x86_64-unknown-linux-musl
 
 ###############
 ## Final image
@@ -49,7 +53,7 @@ COPY --from=builder /etc/group /etc/group
 
 WORKDIR /gotify_sample
 # Copy our build
-COPY --from=builder /gotify_sample/target/x86_64-unknown-linux-musl/release/gotify_sample ./
+COPY --from=builder /gotify_sample/target/x86_64-unknown-linux-musl/debug/gotify_sample ./
 
 USER myuser:myuser
 ENV RUST_LOG=info

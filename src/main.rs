@@ -14,6 +14,7 @@ const BASE_URL_STRING: &str = "https://gotify.van-ngo.com";
 
 #[tokio::main]
 async fn main() {
+    console_subscriber::init();
     env_logger::init();
 
     let base_url = Url::parse(BASE_URL_STRING).expect("Failed to parse the base url");
