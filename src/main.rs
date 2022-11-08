@@ -21,16 +21,6 @@ async fn main() {
 
     let (sender, receiver) = channel::<monitor::MonitorNotification>();
 
-    let soha_general_monitor = TopNewsMonitor::new(
-        sender.clone(),
-        NewsScraperFetcher::new(
-            "Soha",
-            "https://soha.vn/",
-            soha_parser::parse_soha,
-        ),
-        1800,
-    );
-
     let soha_international_monitor = TopNewsMonitor::new(
         sender.clone(),
         NewsScraperFetcher::new(
@@ -38,7 +28,7 @@ async fn main() {
             "https://soha.vn/quoc-te.htm",
             soha_parser::parse_soha,
         ),
-        1800,
+        300,
     );
 
     let soha_technology_monitor = TopNewsMonitor::new(
@@ -48,17 +38,7 @@ async fn main() {
             "https://soha.vn/cong-nghe.htm",
             soha_parser::parse_soha,
         ),
-        1800,
-    );
-
-    let vnexpress_general_monitor = TopNewsMonitor::new(
-        sender.clone(),
-        NewsScraperFetcher::new(
-            "VnExpress chung",
-            "https://vnexpress.net/",
-            vnexpress_parser::parse_vnexpress,
-        ),
-        1800,
+        300,
     );
 
     let vnexpress_international_monitor = TopNewsMonitor::new(
@@ -68,14 +48,12 @@ async fn main() {
             "https://vnexpress.net/the-gioi",
             vnexpress_parser::parse_vnexpress,
         ),
-        1800,
+        300,
     );
 
     let _top_news_monitors = vec![
-        soha_general_monitor,
         soha_international_monitor,
         soha_technology_monitor,
-        vnexpress_general_monitor,
         vnexpress_international_monitor,
     ];
 
