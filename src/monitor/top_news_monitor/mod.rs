@@ -68,7 +68,9 @@ impl TopNewsMonitor {
                 tokio::time::sleep_until(next_wake_instant).await;
                 next_wake_instant = Instant::now() + Duration::from_secs(interval);
 
-                let top_news_result = match fetcher.lock().await.fetch_news().await {
+                let top_news_result = fetcher.lock().await.fetch_news().await;
+                
+                let top_news_result = match top_news_result {
                     Err(e) => {
                         error!("{}", e);
                         continue;
