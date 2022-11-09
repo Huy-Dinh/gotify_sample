@@ -4,11 +4,11 @@ use log::{debug, error};
 use std::{
     error::Error,
     fmt::{self, Display},
-    sync::{mpsc::Sender, Arc},
+    sync::{mpsc::Sender},
     time::Duration,
 };
 
-use tokio::{sync::Mutex, task::JoinHandle, time::Instant};
+use tokio::{task::JoinHandle, time::Instant};
 
 pub mod news_api_fetcher;
 pub mod news_scraper_fetcher;
@@ -25,14 +25,12 @@ pub struct NewsInfo {
 #[async_trait]
 pub trait NewsFetcher {
     async fn fetch_news(
-        &mut self,
+        &self,
     ) -> Result<Option<NewsInfo>, Box<dyn Error>>;
 }
 
 pub struct TopNewsMonitor {
-    fetcher: Arc<Mutex<dyn NewsFetcher + Sync + Send>>,
-    task_handle: Option<JoinHandle<()>>,
-    interval: u64,
+    task_handle: JoinHandle<()>
 }
 
 #[derive(Debug, Clone)]
@@ -48,19 +46,11 @@ impl Display for ResponseParsingFailed {
 
 impl TopNewsMonitor {
     pub fn new(
-        fetcher: Arc<Mutex<dyn NewsFetcher + Sync + Send>>,
+        sender: Sender<MonitorNotification>,
+        fetcher: impl NewsFetcher + Sync + Send + 'static,
         interval: u64,
     ) -> TopNewsMonitor {
-        TopNewsMonitor {
-            fetcher,
-            task_handle: None,
-            interval,
-        }
-    }
 
-    pub fn start(&mut self, sender: Sender<MonitorNotification>) {
-        let interval = self.interval;
-        let fetcher = self.fetcher.clone();
         let running_fn = async move {
             let mut next_wake_instant = Instant::now();
 
@@ -68,7 +58,7 @@ impl TopNewsMonitor {
                 tokio::time::sleep_until(next_wake_instant).await;
                 next_wake_instant = Instant::now() + Duration::from_secs(interval);
 
-                let top_news_result = fetcher.lock().await.fetch_news().await;
+                let top_news_result = fetcher.fetch_news().await;
                 
                 let top_news_result = match top_news_result {
                     Err(e) => {
@@ -97,16 +87,16 @@ impl TopNewsMonitor {
             }
         };
 
-        // Save the task handle so we can stop it later
-        self.task_handle = Some(tokio::spawn(running_fn));
+        TopNewsMonitor {
+            task_handle: tokio::spawn(running_fn),
+        }
     }
+
 }
 
 impl Drop for TopNewsMonitor {
     fn drop(&mut self) {
-        if let Some(task_handle) = &self.task_handle {
-            task_handle.abort();
-            debug!("Aborted running task on drop");
-        }
+        self.task_handle.abort();
+        debug!("Aborted running task on drop");
     }
 }

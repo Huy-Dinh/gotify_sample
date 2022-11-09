@@ -42,7 +42,7 @@ impl NewsApiFetcher {
 
 #[async_trait]
 impl NewsFetcher for NewsApiFetcher {
-    async fn fetch_news(&mut self) -> Result<Option<NewsInfo>, Box<dyn Error>> {
+    async fn fetch_news(&self) -> Result<Option<NewsInfo>, Box<dyn Error>> {
         let mut request_builder = reqwest::Client::new()
             .get("https://newsapi.org/v2/top-headlines")
             .query(&[("country", &self.country), ("apiKey", &self.api_key)])

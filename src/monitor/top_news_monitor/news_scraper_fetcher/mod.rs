@@ -1,4 +1,4 @@
-use std::{error::Error, time::Duration};
+use std::{error::Error, time::Duration, sync::Mutex};
 
 use super::{NewsFetcher, NewsInfo};
 use async_trait::async_trait;
@@ -15,7 +15,7 @@ pub struct ParsedNewsDetails{
 }
 
 pub struct NewsScraperFetcher {
-    last_title: String,
+    last_title: Mutex<String>,
     url_to_scrape: String,
     source_name: String,
     client: reqwest::Client,
@@ -25,7 +25,7 @@ pub struct NewsScraperFetcher {
 impl NewsScraperFetcher {
     pub fn new(source_name: &str, url_to_scrape: &str, parse: fn(scraper::Html) -> Option<ParsedNewsDetails>) -> NewsScraperFetcher {
         NewsScraperFetcher {
-            last_title: "".to_string(),
+            last_title: Mutex::new(String::new()),
             url_to_scrape: url_to_scrape.to_string(),
             source_name: source_name.to_string(),
             client: reqwest::Client::new(),
@@ -36,7 +36,7 @@ impl NewsScraperFetcher {
 
 #[async_trait]
 impl NewsFetcher for NewsScraperFetcher {
-    async fn fetch_news(&mut self) -> Result<Option<NewsInfo>, Box<dyn Error>> {
+    async fn fetch_news(&self) -> Result<Option<NewsInfo>, Box<dyn Error>> {
         info!("Fetching {}", &self.url_to_scrape);
 
         let response = self.client.get(&self.url_to_scrape).timeout(REQUEST_TIMEOUT).send().await?;
@@ -53,11 +53,15 @@ impl NewsFetcher for NewsScraperFetcher {
             Some(news_details) => news_details
         };
 
-        if parsed_news_details.title.eq(&self.last_title) {
-            return Ok(None);
-        }
+        {
+            let mut last_title = self.last_title.lock().map_err(|_| format!("Could not lock mutex for last title. Url: {}", &self.url_to_scrape))?;
 
-        self.last_title = parsed_news_details.title.clone();
+            if parsed_news_details.title.eq(&*last_title) {
+                return Ok(None);
+            }
+
+            *last_title = parsed_news_details.title.clone();
+        }
 
         let news_info = NewsInfo {
             title: parsed_news_details.title,
