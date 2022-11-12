@@ -53,4 +53,4 @@ COPY --from=builder /gotify_sample/target/x86_64-unknown-linux-musl/release/goti
 
 USER myuser:myuser
 ENV RUST_LOG=info
-CMD ["/gotify_sample/gotify_sample"]
+CMD ["/gotify_sample/gotify-sender-server"]

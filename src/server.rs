@@ -1,4 +1,5 @@
-use futures::executor;
+use futures::{executor};
+use grpc_server::start_server;
 use log::{debug, error};
 use monitor::{
     top_news_monitor::{
@@ -20,6 +21,7 @@ use std::{
 
 mod monitor;
 mod notification_sender;
+mod grpc_server;
 
 const BASE_URL_STRING: &str = "https://gotify.van-ngo.com";
 
@@ -91,5 +93,9 @@ async fn main() {
         }
     });
 
+    let grpc_server = grpc_server::GrpcMonitorServer::new(persistence);
+    let server_task = start_server(50051, grpc_server);
+
+    server_task.await;
     notification_receiver_task.await.unwrap();
 }

@@ -1,0 +1,53 @@
+syntax = "proto3";
+package monitor_service;
+
+service Monitor {
+    rpc GetMonitors (GetMonitorsRequest) returns (GetMonitorsReply);
+    //rpc DeleteMonitor (DeleteMonitorRequest) returns (DeleteMonitorReply);
+}
+
+enum MonitorType {
+    UNDEFINED_TYPE = 0;
+    NEWS_API = 1;
+    WEB_SCRAPER = 2;
+};
+
+enum ParserType {
+    UNDEFINED_PARSER = 0;
+    SOHA = 1;
+    VNEXPRESS = 2;
+}
+
+message NewsApiConfiguration {
+    optional string api_key = 1;
+    string country = 2;
+    optional string topic = 3;
+}
+
+message ScraperApiConfiguration {
+    string url = 1;
+    string name = 2;
+    ParserType parser_type = 3;
+}
+
+message MonitorConfiguration {
+    uint64 interval_in_seconds = 1;
+    MonitorType monitor_type = 2;
+    optional NewsApiConfiguration news_api_configuration = 3;
+    optional ScraperApiConfiguration scraper_api_configuration = 4;
+}
+
+message GetMonitorsRequest {
+}
+
+message GetMonitorsReply {
+    repeated MonitorConfiguration monitor_configurations = 1;
+}
+
+message DeleteMonitorRequest {
+    uint32 index = 1;
+}
+
+message DeleteMonitorReply {
+    bool success = 1;
+}
