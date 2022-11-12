@@ -64,8 +64,7 @@ impl TopNewsMonitorPersistence {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    fn remove_configuration(&mut self, index: usize) -> Result<(), ()> {
+    pub fn remove_configuration(&mut self, index: usize) -> Result<(), ()> {
         self.monitor_configurations.remove(index);
         Ok(())
     }

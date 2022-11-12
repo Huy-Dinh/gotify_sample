@@ -1,60 +1,18 @@
-use futures::{executor};
+use futures::executor;
 use grpc_server::start_server;
 use log::{debug, error};
-use monitor::{
-    top_news_monitor::{
-        config::ParserType,
-        news_api_fetcher::NewsApiFetcher,
-        news_scraper_fetcher::{soha_parser, vnexpress_parser, NewsScraperFetcher},
-        TopNewsMonitor, persistence,
-    },
-    MonitorNotification,
-};
-
-use monitor::top_news_monitor::config::{MonitorConfiguration, MonitorType};
+use monitor::top_news_monitor::{persistence, TopNewsMonitor};
 
 use url::Url;
 
-use std::{
-    sync::mpsc::{channel, Sender},
-};
+use std::sync::mpsc::channel;
 
+mod grpc_server;
+mod helper;
 mod monitor;
 mod notification_sender;
-mod grpc_server;
 
 const BASE_URL_STRING: &str = "https://gotify.van-ngo.com";
-
-fn create_monitor(
-    sender: Sender<MonitorNotification>,
-    config: &MonitorConfiguration,
-) -> TopNewsMonitor {
-    match &config.monitor_type {
-        MonitorType::ApiMonitor {
-            api_key,
-            country,
-            topic,
-        } => {
-            let fetcher = NewsApiFetcher::new(api_key.clone(), country, topic.clone());
-            TopNewsMonitor::new(sender, fetcher, config.interval)
-        }
-        MonitorType::ScraperMonitor {
-            name,
-            url,
-            parser_type,
-        } => {
-            let parser = match parser_type {
-                ParserType::Soha => soha_parser::parse_soha,
-                ParserType::VnExpress => vnexpress_parser::parse_vnexpress,
-            };
-            TopNewsMonitor::new(
-                sender,
-                NewsScraperFetcher::new(name, url, parser),
-                config.interval,
-            )
-        }
-    }
-}
 
 #[tokio::main]
 async fn main() {
@@ -66,9 +24,10 @@ async fn main() {
 
     let persistence = persistence::TopNewsMonitorPersistence::new();
 
-    let _top_news_monitors: Vec<TopNewsMonitor> = persistence.get_configurations()
+    let top_news_monitors: Vec<TopNewsMonitor> = persistence
+        .get_configurations()
         .iter()
-        .map(|config| create_monitor(sender.clone(), config))
+        .map(|config| helper::create_monitor(sender.clone(), config))
         .collect();
 
     let notification_receiver_task = tokio::task::spawn_blocking(move || {
@@ -93,7 +52,7 @@ async fn main() {
         }
     });
 
-    let grpc_server = grpc_server::GrpcMonitorServer::new(persistence);
+    let grpc_server = grpc_server::GrpcMonitorServer::new(persistence, top_news_monitors);
     let server_task = start_server(50051, grpc_server);
 
     server_task.await;

@@ -1,68 +1,33 @@
+use std::sync::Mutex;
+
+use log::debug;
 use monitor_grpc_service::monitor_server::{Monitor, MonitorServer};
 use monitor_grpc_service::{GetMonitorsReply, GetMonitorsRequest};
 use tonic::{transport::Server, Request, Response, Status};
 
 use crate::monitor::top_news_monitor::persistence::TopNewsMonitorPersistence;
 
-use crate::monitor::top_news_monitor::config;
+use crate::monitor::top_news_monitor::TopNewsMonitor;
 
-use self::monitor_grpc_service::{MonitorConfiguration, NewsApiConfiguration, ScraperApiConfiguration, MonitorType, ParserType};
+use self::monitor_grpc_service::{DeleteMonitorReply, DeleteMonitorRequest, MonitorConfiguration};
 
 pub mod monitor_grpc_service {
     tonic::include_proto!("monitor_service"); // The string specified here must match the proto package name
 }
 
 pub struct GrpcMonitorServer {
-    persistence: TopNewsMonitorPersistence,
+    persistence: Mutex<TopNewsMonitorPersistence>,
+    running_monitors: Mutex<Vec<TopNewsMonitor>>,
 }
 
 impl GrpcMonitorServer {
-    pub fn new(persistence: TopNewsMonitorPersistence) -> GrpcMonitorServer {
-        GrpcMonitorServer { persistence }
-    }
-}
-
-impl From<&config::ParserType> for ParserType {
-    fn from(parser_type: &config::ParserType) -> Self {
-        match parser_type {
-            config::ParserType::Soha => ParserType::Soha,
-            config::ParserType::VnExpress => ParserType::Vnexpress
-        }
-    }
-}
-
-impl From<&config::MonitorConfiguration> for MonitorConfiguration {
-    fn from(monitor_config: &config::MonitorConfiguration) -> Self {
-
-        let mut news_api_configuration: Option<NewsApiConfiguration> = None;
-        let mut scraper_api_configuration: Option<ScraperApiConfiguration> = None;
-        let monitor_type: i32;
-
-        match &monitor_config.monitor_type {
-            config::MonitorType::ApiMonitor { api_key, country, topic } => {
-                monitor_type = MonitorType::NewsApi as i32;
-                news_api_configuration = Some(NewsApiConfiguration {
-                    api_key: api_key.clone(),
-                    country: country.clone(),
-                    topic: topic.clone()
-                });
-            },
-            config::MonitorType::ScraperMonitor { url, name, parser_type } => {
-                monitor_type = MonitorType::WebScraper as i32;
-
-                scraper_api_configuration = Some(ScraperApiConfiguration{
-                    url: url.clone(),
-                    name: name.clone(),
-                    parser_type: ParserType::from(parser_type) as i32
-                });
-            }
-        }
-
-        MonitorConfiguration { 
-            interval_in_seconds: monitor_config.interval.as_secs(), 
-            monitor_type,
-            news_api_configuration,
-            scraper_api_configuration 
+    pub fn new(
+        persistence: TopNewsMonitorPersistence,
+        running_monitors: Vec<TopNewsMonitor>,
+    ) -> GrpcMonitorServer {
+        GrpcMonitorServer {
+            persistence: Mutex::new(persistence),
+            running_monitors: Mutex::new(running_monitors),
         }
     }
 }
@@ -73,15 +38,47 @@ impl Monitor for GrpcMonitorServer {
         &self,
         request: Request<GetMonitorsRequest>,
     ) -> Result<Response<GetMonitorsReply>, Status> {
-        println!("Got a request: {:?}", request);
+        debug!("Got a request: {:?}", request);
 
-        let monitor_configurations: Vec<MonitorConfiguration> = self.persistence.get_configurations().iter().map(MonitorConfiguration::from).collect();
+        let monitor_configurations: Vec<MonitorConfiguration> = self
+            .persistence
+            .lock()
+            .unwrap()
+            .get_configurations()
+            .iter()
+            .map(MonitorConfiguration::from)
+            .collect();
 
         let reply = monitor_grpc_service::GetMonitorsReply {
-            monitor_configurations
+            monitor_configurations,
         };
 
         Ok(Response::new(reply)) // Send back our formatted greeting
+    }
+
+    async fn delete_monitor(
+        &self,
+        request: Request<DeleteMonitorRequest>,
+    ) -> Result<Response<DeleteMonitorReply>, Status> {
+        debug!("Got a delete request: {:?}", request);
+
+        let index_to_delete = request.get_ref().index as usize;
+
+        if index_to_delete >= self.running_monitors.lock().unwrap().len() {
+            Err(Status::invalid_argument("Index out of range"))
+        } else {
+            self.persistence
+                .lock()
+                .unwrap()
+                .remove_configuration(index_to_delete)
+                .unwrap();
+            self.running_monitors
+                .lock()
+                .unwrap()
+                .remove(index_to_delete);
+
+            Ok(Response::new(DeleteMonitorReply {}))
+        }
     }
 }
 

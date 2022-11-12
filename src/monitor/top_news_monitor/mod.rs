@@ -1,6 +1,6 @@
 use super::MonitorNotification;
 use async_trait::async_trait;
-use log::{debug, error};
+use log::{debug, error, info};
 use std::{
     error::Error,
     fmt::{self, Display},
@@ -99,6 +99,6 @@ impl TopNewsMonitor {
 impl Drop for TopNewsMonitor {
     fn drop(&mut self) {
         self.task_handle.abort();
-        debug!("Aborted running task on drop");
+        info!("Aborted running task on drop");
     }
 }

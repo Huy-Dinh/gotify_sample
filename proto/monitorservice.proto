@@ -3,7 +3,7 @@ package monitor_service;
 
 service Monitor {
     rpc GetMonitors (GetMonitorsRequest) returns (GetMonitorsReply);
-    //rpc DeleteMonitor (DeleteMonitorRequest) returns (DeleteMonitorReply);
+    rpc DeleteMonitor (DeleteMonitorRequest) returns (DeleteMonitorReply);
 }
 
 enum MonitorType {
@@ -49,5 +49,4 @@ message DeleteMonitorRequest {
 }
 
 message DeleteMonitorReply {
-    bool success = 1;
 }
