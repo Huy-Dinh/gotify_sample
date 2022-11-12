@@ -5,7 +5,7 @@ use monitor::{
         config::ParserType,
         news_api_fetcher::NewsApiFetcher,
         news_scraper_fetcher::{soha_parser, vnexpress_parser, NewsScraperFetcher},
-        TopNewsMonitor,
+        TopNewsMonitor, persistence,
     },
     MonitorNotification,
 };
@@ -16,7 +16,6 @@ use url::Url;
 
 use std::{
     sync::mpsc::{channel, Sender},
-    time::Duration,
 };
 
 mod monitor;
@@ -63,50 +62,9 @@ async fn main() {
 
     let (sender, receiver) = channel::<monitor::MonitorNotification>();
 
-    let monitor_configs = [
-        MonitorConfiguration {
-            interval: Duration::from_secs(1800),
-            monitor_type: MonitorType::ScraperMonitor {
-                url: String::from("https://soha.vn/"),
-                name: String::from("Soha"),
-                parser_type: ParserType::Soha,
-            },
-        },
-        MonitorConfiguration {
-            interval: Duration::from_secs(1800),
-            monitor_type: MonitorType::ScraperMonitor {
-                url: String::from("https://soha.vn/quoc-te.htm"),
-                name: String::from("Soha quốc tế"),
-                parser_type: ParserType::Soha,
-            },
-        },
-        MonitorConfiguration {
-            interval: Duration::from_secs(1800),
-            monitor_type: MonitorType::ScraperMonitor {
-                url: String::from("https://soha.vn/cong-nghe.htm"),
-                name: String::from("Soha công nghệ"),
-                parser_type: ParserType::Soha,
-            },
-        },
-        MonitorConfiguration {
-            interval: Duration::from_secs(1800),
-            monitor_type: MonitorType::ScraperMonitor {
-                url: String::from("https://vnexpress.net/"),
-                name: String::from("VnExpress"),
-                parser_type: ParserType::VnExpress,
-            },
-        },
-        MonitorConfiguration {
-            interval: Duration::from_secs(1800),
-            monitor_type: MonitorType::ScraperMonitor {
-                url: String::from("https://vnexpress.net/the-gioi"),
-                name: String::from("VnExpress quốc tế"),
-                parser_type: ParserType::VnExpress,
-            },
-        },
-    ];
+    let persistence = persistence::TopNewsMonitorPersistence::new();
 
-    let _top_news_monitors: Vec<TopNewsMonitor> = monitor_configs
+    let _top_news_monitors: Vec<TopNewsMonitor> = persistence.get_configurations()
         .iter()
         .map(|config| create_monitor(sender.clone(), config))
         .collect();

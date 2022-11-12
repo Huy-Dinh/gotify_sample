@@ -10,6 +10,7 @@ use std::{
 
 use tokio::{task::JoinHandle, time::Instant};
 
+pub mod persistence;
 pub mod config;
 pub mod news_api_fetcher;
 pub mod news_scraper_fetcher;
