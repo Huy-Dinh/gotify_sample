@@ -10,6 +10,7 @@ use std::{
 
 use tokio::{task::JoinHandle, time::Instant};
 
+pub mod config;
 pub mod news_api_fetcher;
 pub mod news_scraper_fetcher;
 
@@ -48,7 +49,7 @@ impl TopNewsMonitor {
     pub fn new(
         sender: Sender<MonitorNotification>,
         fetcher: impl NewsFetcher + Sync + Send + 'static,
-        interval: u64,
+        interval: Duration,
     ) -> TopNewsMonitor {
 
         let running_fn = async move {
@@ -56,7 +57,7 @@ impl TopNewsMonitor {
 
             loop {
                 tokio::time::sleep_until(next_wake_instant).await;
-                next_wake_instant = Instant::now() + Duration::from_secs(interval);
+                next_wake_instant = Instant::now() + interval;
 
                 let top_news_result = fetcher.fetch_news().await;
                 
