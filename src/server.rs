@@ -52,7 +52,7 @@ async fn main() {
         }
     });
 
-    let grpc_server = grpc_server::GrpcMonitorServer::new(persistence, top_news_monitors);
+    let grpc_server = grpc_server::GrpcMonitorServer::new(persistence, top_news_monitors, sender);
     let server_task = start_server(50051, grpc_server);
 
     server_task.await;

@@ -58,8 +58,7 @@ impl TopNewsMonitorPersistence {
         &self.monitor_configurations
     }
 
-    #[allow(dead_code)]
-    fn add_configuration(&mut self, new_configuration: MonitorConfiguration) -> Result<(), ()> {
+    pub fn add_configuration(&mut self, new_configuration: MonitorConfiguration) -> Result<(), ()> {
         self.monitor_configurations.push(new_configuration);
         Ok(())
     }
