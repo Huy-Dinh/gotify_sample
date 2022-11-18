@@ -4,7 +4,6 @@ use super::{NewsFetcher, NewsInfo, ResponseParsingFailed};
 use anyhow::Result;
 use async_trait::async_trait;
 
-#[allow(dead_code)]
 const DEFAULT_API_KEY: &str = "db957bc6a67148abbb9a6e35402123e3";
 
 pub struct NewsApiFetcher {
@@ -25,7 +24,6 @@ impl Display for NoArticleError {
 }
 
 impl NewsApiFetcher {
-    #[allow(dead_code)]
     pub fn new(api_key: Option<String>, country: &str, topic: Option<String>) -> NewsApiFetcher {
         let mut this_api_key = DEFAULT_API_KEY.to_string();
         if let Some(api_key) = api_key {

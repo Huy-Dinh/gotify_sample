@@ -9,8 +9,6 @@ pub enum ParserType {
     Soha,
     VnExpress,
 }
-
-#[allow(dead_code)]
 pub enum MonitorType {
     ApiMonitor {
         api_key: Option<String>,
