@@ -1,11 +1,9 @@
-use futures::executor;
 use grpc_server::start_server;
 use log::{debug, error};
 use monitor::top_news_monitor::{persistence, TopNewsMonitor};
 
+use tokio::sync::mpsc::channel;
 use url::Url;
-
-use std::sync::mpsc::channel;
 
 mod grpc_server;
 mod helper;
@@ -20,7 +18,7 @@ async fn main() {
 
     let base_url = Url::parse(BASE_URL_STRING).expect("Failed to parse the base url");
 
-    let (sender, receiver) = channel::<monitor::MonitorNotification>();
+    let (sender, mut receiver) = channel::<monitor::MonitorNotification>(64);
 
     let persistence = persistence::TopNewsMonitorPersistence::new();
 
@@ -30,9 +28,9 @@ async fn main() {
         .map(|config| helper::create_monitor(sender.clone(), config))
         .collect();
 
-    let notification_receiver_task = tokio::task::spawn_blocking(move || {
-        while let Ok(msg) = receiver.recv() {
-            let send_result = executor::block_on(notification_sender::send_notification(
+    let notification_receiver_task = tokio::task::spawn(async move {
+        while let Some(msg) = receiver.recv().await {
+            let send_result = notification_sender::send_notification(
                 &base_url,
                 msg.app_token,
                 &msg.title,
@@ -40,7 +38,8 @@ async fn main() {
                 &msg.image_url,
                 &msg.article_link,
                 10,
-            ));
+            )
+            .await;
             match send_result {
                 Err(e) => {
                     error!("{}", e);

@@ -1,8 +1,8 @@
 use std::{error::Error, fmt, fmt::Display};
 
-use async_trait::async_trait;
-
 use super::{NewsFetcher, NewsInfo, ResponseParsingFailed};
+use anyhow::Result;
+use async_trait::async_trait;
 
 #[allow(dead_code)]
 const DEFAULT_API_KEY: &str = "db957bc6a67148abbb9a6e35402123e3";
@@ -42,7 +42,7 @@ impl NewsApiFetcher {
 
 #[async_trait]
 impl NewsFetcher for NewsApiFetcher {
-    async fn fetch_news(&self) -> Result<Option<NewsInfo>, Box<dyn Error>> {
+    async fn fetch_news(&self) -> Result<Option<NewsInfo>> {
         let mut request_builder = reqwest::Client::new()
             .get("https://newsapi.org/v2/top-headlines")
             .query(&[("country", &self.country), ("apiKey", &self.api_key)])

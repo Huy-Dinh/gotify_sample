@@ -47,10 +47,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             interval_in_seconds: 1800,
             monitor_type: 0,
             scraper_configuration: None,
-            news_api_configuration: Some(NewsApiConfiguration{
+            news_api_configuration: Some(NewsApiConfiguration {
                 api_key: None,
                 topic: None,
-                country: String::from("de")
+                country: String::from("de"),
             }),
         }),
     });

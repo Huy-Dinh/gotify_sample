@@ -1,8 +1,9 @@
-use std::sync::{mpsc::Sender, Mutex};
+use std::sync::Mutex;
 
 use log::debug;
 use monitor_grpc_service::monitor_server::{Monitor, MonitorServer};
 use monitor_grpc_service::{GetMonitorsReply, GetMonitorsRequest};
+use tokio::sync::mpsc::Sender;
 use tonic::{transport::Server, Request, Response, Status};
 
 use crate::helper::create_monitor;
@@ -107,11 +108,15 @@ impl Monitor for GrpcMonitorServer {
             Some(config) => config,
         };
 
-        if monitor_config.monitor_type == MonitorType::NewsApi as i32 && monitor_config.news_api_configuration.is_none() {
+        if monitor_config.monitor_type == MonitorType::NewsApi as i32
+            && monitor_config.news_api_configuration.is_none()
+        {
             return Err(Status::invalid_argument("Empty News API configuration"));
         }
 
-        if monitor_config.monitor_type == MonitorType::WebScraper as i32 && monitor_config.scraper_configuration.is_none() {
+        if monitor_config.monitor_type == MonitorType::WebScraper as i32
+            && monitor_config.scraper_configuration.is_none()
+        {
             return Err(Status::invalid_argument("Empty scraper configuration"));
         }
 
@@ -119,10 +124,20 @@ impl Monitor for GrpcMonitorServer {
 
         let mut monitors_container = self.monitors_container.lock().unwrap();
 
-        monitors_container.running_monitors.push(create_monitor(self.sender.lock().unwrap().clone(), &new_monitor_config));
-        match monitors_container.persistence.add_configuration(new_monitor_config) {
-            Err(err) => { return Err(Status::internal(format!{"Error adding new monitor; {:?}", err}));},
-            Ok(()) => { return Ok(Response::new(CreateMonitorReply {})) }
+        monitors_container.running_monitors.push(create_monitor(
+            self.sender.lock().unwrap().clone(),
+            &new_monitor_config,
+        ));
+        match monitors_container
+            .persistence
+            .add_configuration(new_monitor_config)
+        {
+            Err(err) => {
+                return Err(Status::internal(
+                    format! {"Error adding new monitor; {:?}", err},
+                ));
+            }
+            Ok(()) => return Ok(Response::new(CreateMonitorReply {})),
         }
     }
 }

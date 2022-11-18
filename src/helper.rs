@@ -1,3 +1,5 @@
+use tokio::sync::mpsc::Sender;
+
 use crate::{
     grpc_server::monitor_grpc_service as grpc,
     monitor::{
@@ -10,7 +12,7 @@ use crate::{
         MonitorNotification,
     },
 };
-use std::{sync::mpsc::Sender, time::Duration};
+use std::time::Duration;
 
 pub fn create_monitor(
     sender: Sender<MonitorNotification>,

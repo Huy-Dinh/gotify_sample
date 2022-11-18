@@ -4,7 +4,7 @@ pub struct MonitorNotification {
     pub title: String,
     pub message: String,
     pub image_url: Option<String>,
-    pub article_link: Option<String>
+    pub article_link: Option<String>,
 }
 
 pub mod top_news_monitor;

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use core::fmt;
 use reqwest::StatusCode;
 use serde_json::{self, json};
@@ -30,7 +31,7 @@ pub async fn send_notification(
     image_url: &Option<String>,
     article_link: &Option<String>,
     priority: u32,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let mut notification_json = json!({
             "message": message,
             "title": title,
@@ -62,15 +63,14 @@ pub async fn send_notification(
         .await?;
 
     match response.status() {
-        StatusCode::OK => {
-            Ok(())
-        }
+        StatusCode::OK => Ok(()),
         _ => {
             let response_text = response.text().await?;
             Err(RequestFailed {
                 message: response_text,
                 url: url.to_string(),
-            }.into())
+            }
+            .into())
         }
     }
 }

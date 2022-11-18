@@ -34,6 +34,6 @@ pub fn parse_soha(document: scraper::Html) -> Option<ParsedNewsDetails> {
     Some(ParsedNewsDetails {
         article_url,
         title,
-        image_url
+        image_url,
     })
 }

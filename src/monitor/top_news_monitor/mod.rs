@@ -4,16 +4,17 @@ use log::{debug, error, info};
 use std::{
     error::Error,
     fmt::{self, Display},
-    sync::{mpsc::Sender},
     time::Duration,
 };
 
-use tokio::{task::JoinHandle, time::Instant};
+use tokio::{sync::mpsc::Sender, task::JoinHandle, time::Instant};
 
-pub mod persistence;
+use anyhow::{Context, Result};
+
 pub mod config;
 pub mod news_api_fetcher;
 pub mod news_scraper_fetcher;
+pub mod persistence;
 
 const APP_TOKEN: &str = "A7opbHJXd4qnc7Z";
 
@@ -21,18 +22,16 @@ pub struct NewsInfo {
     title: String,
     source: String,
     image_url: Option<String>,
-    article_url: Option<String>
+    article_url: Option<String>,
 }
 
 #[async_trait]
 pub trait NewsFetcher {
-    async fn fetch_news(
-        &self,
-    ) -> Result<Option<NewsInfo>, Box<dyn Error>>;
+    async fn fetch_news(&self) -> Result<Option<NewsInfo>>;
 }
 
 pub struct TopNewsMonitor {
-    task_handle: JoinHandle<()>
+    task_handle: JoinHandle<()>,
 }
 
 #[derive(Debug, Clone)]
@@ -52,7 +51,6 @@ impl TopNewsMonitor {
         fetcher: impl NewsFetcher + Sync + Send + 'static,
         interval: Duration,
     ) -> TopNewsMonitor {
-
         let running_fn = async move {
             let mut next_wake_instant = Instant::now();
 
@@ -61,7 +59,7 @@ impl TopNewsMonitor {
                 next_wake_instant = Instant::now() + interval;
 
                 let top_news_result = fetcher.fetch_news().await;
-                
+
                 let top_news_result = match top_news_result {
                     Err(e) => {
                         error!("{}", e);
@@ -79,8 +77,12 @@ impl TopNewsMonitor {
                         article_link: news_info.article_url,
                     };
 
-                    if let Err(e) = sender.send(notification) {
-                        error!("Error sending from top news monitor {:?}", e);
+                    if let Err(err) = sender
+                        .send(notification)
+                        .await
+                        .context("Failed to send notification to main thread")
+                    {
+                        error!("{:?}", err);
                         continue;
                     }
                 } else {
@@ -93,7 +95,6 @@ impl TopNewsMonitor {
             task_handle: tokio::spawn(running_fn),
         }
     }
-
 }
 
 impl Drop for TopNewsMonitor {

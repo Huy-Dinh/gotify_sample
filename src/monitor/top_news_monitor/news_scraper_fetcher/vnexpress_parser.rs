@@ -27,6 +27,6 @@ pub fn parse_vnexpress(document: scraper::Html) -> Option<ParsedNewsDetails> {
     Some(ParsedNewsDetails {
         article_url: article_url.map(|url| url.to_string()),
         title,
-        image_url
+        image_url,
     })
 }

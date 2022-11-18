@@ -20,6 +20,6 @@ pub enum MonitorType {
     ScraperMonitor {
         url: String,
         name: String,
-        parser_type: ParserType
+        parser_type: ParserType,
     },
 }
