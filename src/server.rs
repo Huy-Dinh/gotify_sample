@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+
 use grpc_server::start_server;
 use log::{debug, error};
 use monitor::top_news_monitor::{persistence, TopNewsMonitor};
 
 use tokio::sync::mpsc::channel;
 use url::Url;
+use uuid::Uuid;
 
 mod grpc_server;
 mod helper;
@@ -22,10 +25,10 @@ async fn main() {
 
     let persistence = persistence::TopNewsMonitorPersistence::new();
 
-    let top_news_monitors: Vec<TopNewsMonitor> = persistence
+    let top_news_monitors: HashMap<Uuid, TopNewsMonitor> = persistence
         .get_configurations()
         .iter()
-        .map(|config| helper::create_monitor(sender.clone(), config))
+        .map(|config| (config.id, helper::create_monitor(sender.clone(), config)))
         .collect();
 
     let notification_receiver_task = tokio::task::spawn(async move {

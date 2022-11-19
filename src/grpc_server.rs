@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Mutex;
 
 use log::debug;
@@ -5,7 +7,9 @@ use monitor_grpc_service::monitor_server::{Monitor, MonitorServer};
 use monitor_grpc_service::{GetMonitorsReply, GetMonitorsRequest};
 use tokio::sync::mpsc::Sender;
 use tonic::{transport::Server, Request, Response, Status};
+use uuid::Uuid;
 
+use crate::grpc_server::monitor_grpc_service::MonitorEntry;
 use crate::helper::create_monitor;
 use crate::monitor::top_news_monitor::persistence::TopNewsMonitorPersistence;
 use crate::monitor::MonitorNotification;
@@ -13,8 +17,7 @@ use crate::monitor::MonitorNotification;
 use crate::monitor::top_news_monitor::TopNewsMonitor;
 
 use self::monitor_grpc_service::{
-    CreateMonitorReply, CreateMonitorRequest, DeleteMonitorReply, DeleteMonitorRequest,
-    MonitorConfiguration, MonitorType,
+    CreateMonitorReply, CreateMonitorRequest, DeleteMonitorReply, DeleteMonitorRequest, MonitorType,
 };
 
 pub mod monitor_grpc_service {
@@ -23,7 +26,7 @@ pub mod monitor_grpc_service {
 
 struct MonitorsContainer {
     persistence: TopNewsMonitorPersistence,
-    running_monitors: Vec<TopNewsMonitor>,
+    running_monitors: HashMap<Uuid, TopNewsMonitor>,
 }
 
 pub struct GrpcMonitorServer {
@@ -34,7 +37,7 @@ pub struct GrpcMonitorServer {
 impl GrpcMonitorServer {
     pub fn new(
         persistence: TopNewsMonitorPersistence,
-        running_monitors: Vec<TopNewsMonitor>,
+        running_monitors: HashMap<Uuid, TopNewsMonitor>,
         sender: Sender<MonitorNotification>,
     ) -> GrpcMonitorServer {
         GrpcMonitorServer {
@@ -55,19 +58,17 @@ impl Monitor for GrpcMonitorServer {
     ) -> Result<Response<GetMonitorsReply>, Status> {
         debug!("Got a request: {:?}", request);
 
-        let monitor_configurations: Vec<MonitorConfiguration> = self
+        let monitors: Vec<MonitorEntry> = self
             .monitors_container
             .lock()
             .unwrap()
             .persistence
             .get_configurations()
             .iter()
-            .map(MonitorConfiguration::from)
+            .map(MonitorEntry::from)
             .collect();
 
-        let reply = monitor_grpc_service::GetMonitorsReply {
-            monitor_configurations,
-        };
+        let reply = monitor_grpc_service::GetMonitorsReply { monitors };
 
         Ok(Response::new(reply)) // Send back our formatted greeting
     }
@@ -78,20 +79,26 @@ impl Monitor for GrpcMonitorServer {
     ) -> Result<Response<DeleteMonitorReply>, Status> {
         debug!("Got a delete request: {:?}", request);
 
-        let index_to_delete = request.get_ref().index as usize;
+        let id_to_delete = uuid::Uuid::from_str(&request.get_ref().id).map_err(|e| {
+            Status::invalid_argument(format!("Ill-formed id, must be a uuid. Error: {:?}", e))
+        })?;
 
         let mut monitors_container = self.monitors_container.lock().unwrap();
 
-        if index_to_delete >= monitors_container.running_monitors.len() {
-            Err(Status::invalid_argument("Index out of range"))
-        } else {
+        if monitors_container
+            .running_monitors
+            .contains_key(&id_to_delete)
+        {
+            monitors_container.running_monitors.remove(&id_to_delete);
             monitors_container
                 .persistence
-                .remove_configuration(index_to_delete)
+                .remove_configuration(&id_to_delete)
                 .unwrap();
-            monitors_container.running_monitors.remove(index_to_delete);
-
             Ok(Response::new(DeleteMonitorReply {}))
+        } else {
+            Err(Status::invalid_argument(format!(
+                "No monitor with ID {id_to_delete} found"
+            )))
         }
     }
 
@@ -120,14 +127,17 @@ impl Monitor for GrpcMonitorServer {
             return Err(Status::invalid_argument("Empty scraper configuration"));
         }
 
-        let new_monitor_config = config::MonitorConfiguration::from(monitor_config);
+        let new_monitor_config = config::TopNewsMonitorDatabaseEntry::from(monitor_config);
 
         let mut monitors_container = self.monitors_container.lock().unwrap();
 
-        monitors_container.running_monitors.push(create_monitor(
-            self.sender.lock().unwrap().clone(),
-            &new_monitor_config,
-        ));
+        monitors_container.running_monitors.insert(
+            new_monitor_config.id.clone(),
+            create_monitor(self.sender.lock().unwrap().clone(), &new_monitor_config),
+        );
+
+        let new_monitor_id = new_monitor_config.id.to_string();
+
         match monitors_container
             .persistence
             .add_configuration(new_monitor_config)
@@ -137,7 +147,7 @@ impl Monitor for GrpcMonitorServer {
                     format! {"Error adding new monitor; {:?}", err},
                 ));
             }
-            Ok(()) => return Ok(Response::new(CreateMonitorReply {})),
+            Ok(()) => return Ok(Response::new(CreateMonitorReply { id: new_monitor_id })),
         }
     }
 }

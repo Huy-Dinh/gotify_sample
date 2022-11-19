@@ -1,5 +1,3 @@
-use tokio::sync::mpsc::Sender;
-
 use crate::{
     grpc_server::monitor_grpc_service as grpc,
     monitor::{
@@ -13,10 +11,12 @@ use crate::{
     },
 };
 use std::time::Duration;
+use tokio::sync::mpsc::Sender;
+use uuid::Uuid;
 
 pub fn create_monitor(
     sender: Sender<MonitorNotification>,
-    config: &config::MonitorConfiguration,
+    config: &config::TopNewsMonitorDatabaseEntry,
 ) -> TopNewsMonitor {
     match &config.monitor_type {
         config::MonitorType::ApiMonitor {
@@ -54,8 +54,8 @@ impl From<&config::ParserType> for grpc::ParserType {
     }
 }
 
-impl From<&config::MonitorConfiguration> for grpc::MonitorConfiguration {
-    fn from(monitor_config: &config::MonitorConfiguration) -> Self {
+impl From<&config::TopNewsMonitorDatabaseEntry> for grpc::MonitorConfiguration {
+    fn from(monitor_config: &config::TopNewsMonitorDatabaseEntry) -> Self {
         let mut news_api_configuration: Option<grpc::NewsApiConfiguration> = None;
         let mut scraper_configuration: Option<grpc::ScraperApiConfiguration> = None;
         let monitor_type: i32;
@@ -97,7 +97,7 @@ impl From<&config::MonitorConfiguration> for grpc::MonitorConfiguration {
     }
 }
 
-impl From<&grpc::MonitorConfiguration> for config::MonitorConfiguration {
+impl From<&grpc::MonitorConfiguration> for config::TopNewsMonitorDatabaseEntry {
     fn from(config: &grpc::MonitorConfiguration) -> Self {
         let monitor_type: config::MonitorType;
 
@@ -128,9 +128,19 @@ impl From<&grpc::MonitorConfiguration> for config::MonitorConfiguration {
             }
         }
 
-        config::MonitorConfiguration {
+        config::TopNewsMonitorDatabaseEntry {
+            id: Uuid::new_v4(),
             interval: Duration::from_secs(config.interval_in_seconds),
             monitor_type: monitor_type,
+        }
+    }
+}
+
+impl From<&config::TopNewsMonitorDatabaseEntry> for grpc::MonitorEntry {
+    fn from(db_entry: &config::TopNewsMonitorDatabaseEntry) -> Self {
+        Self {
+            id: db_entry.id.to_string(),
+            configuration: Some(grpc::MonitorConfiguration::from(db_entry)),
         }
     }
 }

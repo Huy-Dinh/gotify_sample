@@ -36,15 +36,20 @@ message MonitorConfiguration {
     optional ScraperApiConfiguration scraper_configuration = 4;
 }
 
+message MonitorEntry {
+    string id = 1;
+    MonitorConfiguration configuration = 2;
+}
+
 message GetMonitorsRequest {
 }
 
 message GetMonitorsReply {
-    repeated MonitorConfiguration monitor_configurations = 1;
+    repeated MonitorEntry monitors = 1;
 }
 
 message DeleteMonitorRequest {
-    uint32 index = 1;
+    string id = 1;
 }
 
 message DeleteMonitorReply {
@@ -55,4 +60,5 @@ message CreateMonitorRequest {
 }
 
 message CreateMonitorReply {
+    string id = 1;
 }

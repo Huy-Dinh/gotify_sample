@@ -19,45 +19,53 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("RESPONSE={:?}", response);
 
-    let request = tonic::Request::new(DeleteMonitorRequest { index: 0 });
+    let response_ref = response.get_ref();
 
-    let response = client.delete_monitor(request).await?;
+    if response_ref.monitors.len() > 0 {
+        let monitor_to_delete = response_ref.monitors.get(0).unwrap();
 
-    println!("RESPONSE={:?}", response);
+        let request = tonic::Request::new(DeleteMonitorRequest {
+            id: monitor_to_delete.id.clone(),
+        });
 
-    let request = tonic::Request::new(CreateMonitorRequest {
-        monitor_configuration: Some(MonitorConfiguration {
-            interval_in_seconds: 1800,
-            monitor_type: 1,
-            scraper_configuration: Some(ScraperApiConfiguration {
-                name: String::from("New shiet"),
-                url: String::from("https://soha.vn/giai-tri.htm"),
-                parser_type: 0,
+        let response = client.delete_monitor(request).await?;
+
+        println!("RESPONSE={:?}", response);
+
+        let request = tonic::Request::new(CreateMonitorRequest {
+            monitor_configuration: Some(MonitorConfiguration {
+                interval_in_seconds: 1800,
+                monitor_type: 1,
+                scraper_configuration: Some(ScraperApiConfiguration {
+                    name: String::from("New shiet"),
+                    url: String::from("https://soha.vn/giai-tri.htm"),
+                    parser_type: 0,
+                }),
+                news_api_configuration: None,
             }),
-            news_api_configuration: None,
-        }),
-    });
+        });
 
-    let response = client.create_monitor(request).await?;
+        let response = client.create_monitor(request).await?;
 
-    println!("RESPONSE={:?}", response);
+        println!("RESPONSE={:?}", response);
 
-    let request = tonic::Request::new(CreateMonitorRequest {
-        monitor_configuration: Some(MonitorConfiguration {
-            interval_in_seconds: 1800,
-            monitor_type: 0,
-            scraper_configuration: None,
-            news_api_configuration: Some(NewsApiConfiguration {
-                api_key: None,
-                topic: None,
-                country: String::from("de"),
+        let request = tonic::Request::new(CreateMonitorRequest {
+            monitor_configuration: Some(MonitorConfiguration {
+                interval_in_seconds: 1800,
+                monitor_type: 0,
+                scraper_configuration: None,
+                news_api_configuration: Some(NewsApiConfiguration {
+                    api_key: None,
+                    topic: None,
+                    country: String::from("de"),
+                }),
             }),
-        }),
-    });
+        });
 
-    let response = client.create_monitor(request).await?;
+        let response = client.create_monitor(request).await?;
 
-    println!("RESPONSE={:?}", response);
+        println!("RESPONSE={:?}", response);
+    }
 
     Ok(())
 }
