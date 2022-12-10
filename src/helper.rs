@@ -1,46 +1,34 @@
 use crate::{
     grpc_server::monitor_grpc_service as grpc,
-    monitor::{
-        top_news_monitor::{
-            config,
-            news_api_fetcher::NewsApiFetcher,
-            news_scraper_fetcher::{soha_parser, vnexpress_parser, NewsScraperFetcher},
-            TopNewsMonitor,
-        },
-        MonitorNotification,
+    monitor::top_news_monitor::{
+        config,
+        news_api_fetcher::NewsApiFetcher,
+        news_scraper_fetcher::{soha_parser, vnexpress_parser, NewsScraperFetcher},
+        NewsFetcher,
     },
 };
-use std::time::Duration;
-use tokio::sync::mpsc::Sender;
+use std::{sync::Arc, time::Duration};
 use uuid::Uuid;
 
-pub fn create_monitor(
-    sender: Sender<MonitorNotification>,
+pub fn create_fetcher(
     config: &config::TopNewsMonitorDatabaseEntry,
-) -> TopNewsMonitor {
+) -> Arc<dyn NewsFetcher + Send + Sync + 'static> {
     match &config.monitor_type {
         config::MonitorType::ApiMonitor {
             api_key,
             country,
             topic,
-        } => {
-            let fetcher = NewsApiFetcher::new(api_key.clone(), country, topic.clone());
-            TopNewsMonitor::new(sender, fetcher, config.interval)
-        }
+        } => Arc::new(NewsApiFetcher::new(api_key.clone(), country, topic.clone())),
         config::MonitorType::ScraperMonitor {
-            name,
             url,
+            name,
             parser_type,
         } => {
             let parser = match parser_type {
                 config::ParserType::Soha => soha_parser::parse_soha,
                 config::ParserType::VnExpress => vnexpress_parser::parse_vnexpress,
             };
-            TopNewsMonitor::new(
-                sender,
-                NewsScraperFetcher::new(name, url, parser),
-                config.interval,
-            )
+            Arc::new(NewsScraperFetcher::new(name, url, parser))
         }
     }
 }

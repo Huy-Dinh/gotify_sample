@@ -1,20 +1,14 @@
-use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Mutex;
 
 use log::debug;
 use monitor_grpc_service::monitor_server::{Monitor, MonitorServer};
 use monitor_grpc_service::{GetMonitorsReply, GetMonitorsRequest};
-use tokio::sync::mpsc::Sender;
+use std::sync::Arc;
 use tonic::{transport::Server, Request, Response, Status};
-use uuid::Uuid;
 
 use crate::grpc_server::monitor_grpc_service::MonitorEntry;
-use crate::helper::create_monitor;
 use crate::monitor::top_news_monitor::persistence::TopNewsMonitorPersistence;
-use crate::monitor::MonitorNotification;
-
-use crate::monitor::top_news_monitor::TopNewsMonitor;
 
 use self::monitor_grpc_service::{
     CreateMonitorReply, CreateMonitorRequest, DeleteMonitorReply, DeleteMonitorRequest, MonitorType,
@@ -24,28 +18,14 @@ pub mod monitor_grpc_service {
     tonic::include_proto!("monitor_service"); // The string specified here must match the proto package name
 }
 
-struct MonitorsContainer {
-    persistence: TopNewsMonitorPersistence,
-    running_monitors: HashMap<Uuid, TopNewsMonitor>,
-}
-
 pub struct GrpcMonitorServer {
-    monitors_container: Mutex<MonitorsContainer>,
-    sender: Mutex<Sender<MonitorNotification>>,
+    monitor_persistence: Arc<Mutex<TopNewsMonitorPersistence>>,
 }
 
 impl GrpcMonitorServer {
-    pub fn new(
-        persistence: TopNewsMonitorPersistence,
-        running_monitors: HashMap<Uuid, TopNewsMonitor>,
-        sender: Sender<MonitorNotification>,
-    ) -> GrpcMonitorServer {
+    pub fn new(persistence: Arc<Mutex<TopNewsMonitorPersistence>>) -> GrpcMonitorServer {
         GrpcMonitorServer {
-            monitors_container: Mutex::new(MonitorsContainer {
-                persistence,
-                running_monitors,
-            }),
-            sender: Mutex::new(sender),
+            monitor_persistence: persistence,
         }
     }
 }
@@ -59,10 +39,9 @@ impl Monitor for GrpcMonitorServer {
         debug!("Got a request: {:?}", request);
 
         let monitors: Vec<MonitorEntry> = self
-            .monitors_container
+            .monitor_persistence
             .lock()
             .unwrap()
-            .persistence
             .get_configurations()
             .iter()
             .map(MonitorEntry::from)
@@ -83,22 +62,14 @@ impl Monitor for GrpcMonitorServer {
             Status::invalid_argument(format!("Ill-formed id, must be a uuid. Error: {:?}", e))
         })?;
 
-        let mut monitors_container = self.monitors_container.lock().unwrap();
-
-        if monitors_container
-            .running_monitors
-            .contains_key(&id_to_delete)
+        match self
+            .monitor_persistence
+            .lock()
+            .unwrap()
+            .remove_configuration(&id_to_delete)
         {
-            monitors_container.running_monitors.remove(&id_to_delete);
-            monitors_container
-                .persistence
-                .remove_configuration(&id_to_delete)
-                .unwrap();
-            Ok(Response::new(DeleteMonitorReply {}))
-        } else {
-            Err(Status::invalid_argument(format!(
-                "No monitor with ID {id_to_delete} found"
-            )))
+            Ok(_) => Ok(Response::new(DeleteMonitorReply {})),
+            Err(_) => Err(Status::invalid_argument("No monitor with this Id")),
         }
     }
 
@@ -129,17 +100,12 @@ impl Monitor for GrpcMonitorServer {
 
         let new_monitor_config = config::TopNewsMonitorDatabaseEntry::from(monitor_config);
 
-        let mut monitors_container = self.monitors_container.lock().unwrap();
-
-        monitors_container.running_monitors.insert(
-            new_monitor_config.id.clone(),
-            create_monitor(self.sender.lock().unwrap().clone(), &new_monitor_config),
-        );
-
         let new_monitor_id = new_monitor_config.id.to_string();
 
-        match monitors_container
-            .persistence
+        match self
+            .monitor_persistence
+            .lock()
+            .unwrap()
             .add_configuration(new_monitor_config)
         {
             Err(err) => {
