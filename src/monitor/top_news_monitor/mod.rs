@@ -71,7 +71,6 @@ pub fn run_monitor(
                 .context("Failed to send notification to main thread")
             {
                 error!("{:?}", err);
-                return;
             }
         } else {
             debug!("Empty News result");

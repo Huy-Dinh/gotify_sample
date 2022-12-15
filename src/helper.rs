@@ -76,50 +76,59 @@ impl From<&config::TopNewsMonitorDatabaseEntry> for grpc::MonitorConfiguration {
             }
         }
 
+        let state = match monitor_config.state {
+            config::State::Paused => grpc::State::Paused as i32,
+            config::State::Running => grpc::State::Running as i32,
+        };
+
         grpc::MonitorConfiguration {
             interval_in_seconds: monitor_config.interval.as_secs(),
             monitor_type,
             news_api_configuration,
             scraper_configuration,
+            state,
         }
     }
 }
 
 impl From<&grpc::MonitorConfiguration> for config::TopNewsMonitorDatabaseEntry {
     fn from(config: &grpc::MonitorConfiguration) -> Self {
-        let monitor_type: config::MonitorType;
-
-        if config.monitor_type == grpc::MonitorType::NewsApi as i32 {
+        let monitor_type = if config.monitor_type == grpc::MonitorType::NewsApi as i32 {
             let api_config = config.news_api_configuration.as_ref().unwrap();
 
-            monitor_type = config::MonitorType::ApiMonitor {
+            config::MonitorType::ApiMonitor {
                 api_key: api_config.api_key.clone(),
                 country: api_config.country.clone(),
                 topic: api_config.topic.clone(),
-            };
+            }
         } else {
             // must be Scraper
             let scraper_config = config.scraper_configuration.as_ref().unwrap();
 
-            let parser_type: config::ParserType;
-
-            if scraper_config.parser_type == grpc::ParserType::Soha as i32 {
-                parser_type = config::ParserType::Soha
+            let parser_type = if scraper_config.parser_type == grpc::ParserType::Soha as i32 {
+                config::ParserType::Soha
             } else {
-                parser_type = config::ParserType::VnExpress
-            }
+                config::ParserType::VnExpress
+            };
 
-            monitor_type = config::MonitorType::ScraperMonitor {
+            config::MonitorType::ScraperMonitor {
                 url: scraper_config.url.clone(),
                 name: scraper_config.name.clone(),
                 parser_type,
             }
-        }
+        };
+
+        let state = if config.state == grpc::State::Paused as i32 {
+            config::State::Paused
+        } else {
+            config::State::Running
+        };
 
         config::TopNewsMonitorDatabaseEntry {
             id: Uuid::new_v4(),
             interval: Duration::from_secs(config.interval_in_seconds),
-            monitor_type: monitor_type,
+            monitor_type,
+            state,
         }
     }
 }

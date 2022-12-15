@@ -5,9 +5,10 @@ use std::{
 };
 
 use grpc_server::start_server;
-use log::{debug, error, info, warn};
+use log::{debug, error, warn};
 use monitor::{
     top_news_monitor::{
+        config,
         persistence::{self, TopNewsMonitorPersistence},
         run_monitor, NewsFetcher,
     },
@@ -36,14 +37,14 @@ async fn news_fetching_task(
     let mut fetcher_map: HashMap<Uuid, Arc<dyn NewsFetcher + Send + Sync + 'static>> =
         HashMap::new();
 
-    let mut accumulated_time = Duration::from_micros(0);
+    let mut last_run_time_map = HashMap::new();
 
-    info!("Fetching task entered");
+    let mut first_iteration = true;
 
     loop {
-        info!("Fetching task entered looop");
         tokio::time::sleep_until(next_wake_instant).await;
-        next_wake_instant = Instant::now() + Duration::from_secs(30);
+        let now = Instant::now();
+        next_wake_instant = now + Duration::from_secs(30);
 
         persistence
             .lock()
@@ -51,27 +52,37 @@ async fn news_fetching_task(
             .get_configurations()
             .iter()
             .for_each(|config| {
-                if accumulated_time.as_secs() % config.interval.as_secs() != 0 {
-                    warn!("Time doesnt match");
+                match config.state {
+                    config::State::Paused => {
+                        return;
+                    }
+                    config::State::Running => {}
+                };
+
+                let last_run_time = *last_run_time_map.entry(config.id).or_insert(now);
+
+                // Always send everything on the first iteration
+                if !first_iteration && now.duration_since(last_run_time) < config.interval {
                     return;
                 }
 
-                warn!("Time match! {:?}", &accumulated_time);
-
                 // If we already have a fetcher for this configuration
-                if !fetcher_map.contains_key(&config.id) {
-                    warn!("Missing fetcher, adding new");
-                    fetcher_map.insert(config.id, helper::create_fetcher(config));
-                }
+                let fetcher = fetcher_map
+                    .entry(config.id)
+                    .or_insert_with(|| {
+                        warn!("Missing fetcher, adding new");
+                        helper::create_fetcher(config)
+                    })
+                    .clone();
 
-                let fetcher = fetcher_map.get(&config.id).unwrap().clone();
                 let sender_clone = sender.clone();
 
                 tokio::spawn(async {
                     run_monitor(sender_clone, fetcher);
                 });
             });
-        accumulated_time += Duration::from_secs(30);
+
+        first_iteration = false;
     }
 }
 

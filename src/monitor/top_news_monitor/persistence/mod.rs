@@ -1,4 +1,4 @@
-use super::config::{MonitorType, ParserType, TopNewsMonitorDatabaseEntry};
+use super::config::{MonitorType, ParserType, State, TopNewsMonitorDatabaseEntry};
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -18,6 +18,7 @@ impl TopNewsMonitorPersistence {
                         name: String::from("Soha"),
                         parser_type: ParserType::Soha,
                     },
+                    state: State::Paused,
                 },
                 TopNewsMonitorDatabaseEntry {
                     id: Uuid::new_v4(),
@@ -27,6 +28,7 @@ impl TopNewsMonitorPersistence {
                         name: String::from("Soha quốc tế"),
                         parser_type: ParserType::Soha,
                     },
+                    state: State::Running,
                 },
                 TopNewsMonitorDatabaseEntry {
                     id: Uuid::new_v4(),
@@ -36,6 +38,7 @@ impl TopNewsMonitorPersistence {
                         name: String::from("Soha công nghệ"),
                         parser_type: ParserType::Soha,
                     },
+                    state: State::Running,
                 },
                 TopNewsMonitorDatabaseEntry {
                     id: Uuid::new_v4(),
@@ -45,6 +48,7 @@ impl TopNewsMonitorPersistence {
                         name: String::from("VnExpress"),
                         parser_type: ParserType::VnExpress,
                     },
+                    state: State::Running,
                 },
                 TopNewsMonitorDatabaseEntry {
                     id: Uuid::new_v4(),
@@ -54,6 +58,7 @@ impl TopNewsMonitorPersistence {
                         name: String::from("VnExpress quốc tế"),
                         parser_type: ParserType::VnExpress,
                     },
+                    state: State::Running,
                 },
             ]),
         }

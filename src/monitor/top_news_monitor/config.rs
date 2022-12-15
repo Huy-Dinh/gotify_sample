@@ -5,6 +5,12 @@ pub struct TopNewsMonitorDatabaseEntry {
     pub id: Uuid,
     pub interval: Duration,
     pub monitor_type: MonitorType,
+    pub state: State,
+}
+
+pub enum State {
+    Running,
+    Paused,
 }
 
 pub enum ParserType {

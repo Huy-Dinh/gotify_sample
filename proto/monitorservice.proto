@@ -17,6 +17,11 @@ enum ParserType {
     VNEXPRESS = 1;
 }
 
+enum State {
+    RUNNING = 0;
+    PAUSED = 1;
+}
+
 message NewsApiConfiguration {
     optional string api_key = 1;
     string country = 2;
@@ -34,6 +39,7 @@ message MonitorConfiguration {
     MonitorType monitor_type = 2;
     optional NewsApiConfiguration news_api_configuration = 3;
     optional ScraperApiConfiguration scraper_configuration = 4;
+    State state = 5;
 }
 
 message MonitorEntry {
