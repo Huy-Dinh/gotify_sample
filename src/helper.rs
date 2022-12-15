@@ -56,9 +56,9 @@ impl From<&config::TopNewsMonitorDatabaseEntry> for grpc::MonitorConfiguration {
             } => {
                 monitor_type = grpc::MonitorType::NewsApi as i32;
                 news_api_configuration = Some(grpc::NewsApiConfiguration {
-                    api_key: api_key.clone(),
+                    api_key: api_key.clone().unwrap_or_else(|| String::from("")),
                     country: country.clone(),
-                    topic: topic.clone(),
+                    topic: topic.clone().unwrap_or_else(|| String::from("")),
                 });
             }
             config::MonitorType::ScraperMonitor {
@@ -97,9 +97,9 @@ impl From<&grpc::MonitorConfiguration> for config::TopNewsMonitorDatabaseEntry {
             let api_config = config.news_api_configuration.as_ref().unwrap();
 
             config::MonitorType::ApiMonitor {
-                api_key: api_config.api_key.clone(),
+                api_key: Some(api_config.api_key.clone()),
                 country: api_config.country.clone(),
-                topic: api_config.topic.clone(),
+                topic: Some(api_config.topic.clone()),
             }
         } else {
             // must be Scraper

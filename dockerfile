@@ -28,6 +28,7 @@ RUN adduser \
 
 RUN rustup target add x86_64-unknown-linux-musl
 RUN apt update && apt install -y musl-tools musl-dev
+RUN apt-get install --no-install-recommends --assume-yes protobuf-compiler
 RUN update-ca-certificates
 
 # Copy recipe and build dependencies
@@ -49,8 +50,8 @@ COPY --from=builder /etc/group /etc/group
 
 WORKDIR /gotify_sample
 # Copy our build
-COPY --from=builder /gotify_sample/target/x86_64-unknown-linux-musl/release/gotify_sample ./
+COPY --from=builder /gotify_sample/target/x86_64-unknown-linux-musl/release/gotify-news-reader-server ./
 
 USER myuser:myuser
 ENV RUST_LOG=info
-CMD ["/gotify_sample/gotify-sender-server"]
+CMD ["/gotify_sample/gotify-news-reader-server"]

@@ -23,9 +23,9 @@ enum State {
 }
 
 message NewsApiConfiguration {
-    optional string api_key = 1;
+    string api_key = 1;
     string country = 2;
-    optional string topic = 3;
+    string topic = 3;
 }
 
 message ScraperApiConfiguration {
@@ -37,8 +37,8 @@ message ScraperApiConfiguration {
 message MonitorConfiguration {
     uint64 interval_in_seconds = 1;
     MonitorType monitor_type = 2;
-    optional NewsApiConfiguration news_api_configuration = 3;
-    optional ScraperApiConfiguration scraper_configuration = 4;
+    NewsApiConfiguration news_api_configuration = 3;
+    ScraperApiConfiguration scraper_configuration = 4;
     State state = 5;
 }
 

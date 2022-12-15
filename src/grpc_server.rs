@@ -122,7 +122,7 @@ pub async fn start_server(
     port_number: u32,
     server: GrpcMonitorServer,
 ) -> tokio::task::JoinHandle<()> {
-    let addr = format!("[::1]:{port_number}").parse().unwrap();
+    let addr = format!("[::1]:{}", port_number).parse().unwrap();
 
     let start_fn = async move {
         Server::builder()
